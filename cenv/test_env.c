@@ -19,7 +19,7 @@ int32_t cenv_get_env_version() {
     return 123;
 }
 
-int32_t cenv_make(char* render_mode, cenv_option* options, int32_t options_size) {
+int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options_size) {
     // Allocate make data
     make_data.observation_spaces_size = 1;
     make_data.observation_spaces = (cenv_key_value*)malloc(sizeof(cenv_key_value));

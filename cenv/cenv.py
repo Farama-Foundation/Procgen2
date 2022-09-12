@@ -325,17 +325,15 @@ class CEnv(Env):
         return (observation, info)
 
     def render(self) -> gym.core.RenderFrame:
-        c_frame_p = self.lib.cenv_render()
+        self.lib.cenv_render()
 
-        c_frame = c_frame_p.contents
-
-        value_type = c_frame.value_type
-        value_buffer_size = c_frame.value_buffer_height * c_frame.value_buffer_width * c_frame.value_buffer_channels
-        c_buffer_p = c_frame.value_buffer.b
+        value_type = self.c_render_data.value_type
+        value_buffer_size = self.c_render_data.value_buffer_height * self.c_render_data.value_buffer_width * self.c_render_data.value_buffer_channels
+        c_buffer_p = self.c_render_data.value_buffer.b
 
         arr = _make_nd_array(c_buffer_p, (value_buffer_size,), dtype=CENV_VALUE_TYPE_TO_NUMPY_DTYPE[value_type])
 
-        return arr.reshape(c_frame.value_buffer_height, c_frame.value_buffer_width, c_frame.value_buffer_channels)
+        return arr.reshape(self.c_render_data.value_buffer_height, self.c_render_data.value_buffer_width, self.c_render_data.value_buffer_channels)
 
     def close(self):
         self.lib.cenv_close()
