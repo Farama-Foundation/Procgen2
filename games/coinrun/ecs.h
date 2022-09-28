@@ -281,3 +281,5 @@ public:
         system_manager.set_signature<T>(s);
     }
 };
+
+static Coordinator c;
