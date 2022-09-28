@@ -14,3 +14,6 @@ public:
 
     ~Asset_Texture();
 };
+
+// Manager for all textures
+static Asset_Manager<Asset_Texture> manager_texture;

@@ -45,6 +45,9 @@ include_directories("${PROJECT_SOURCE_DIR}")
 set(SOURCE_PATH "${PROJECT_SOURCE_DIR}")
 set(SOURCES
     "${SOURCE_PATH}/coinrun.cpp"
+    "${SOURCE_PATH}/ecs.cpp"
+    "${SOURCE_PATH}/common_assets.cpp"
+    "${SOURCE_PATH}/common_systems.cpp"
 )
 
 add_library(CoinRun SHARED ${SOURCES})

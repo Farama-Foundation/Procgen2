@@ -1,6 +1,6 @@
 #include "common_systems.h"
 
-void System_Sprite_Render::update() {
+void System_Sprite_Render::update(const Camera2D &camera) {
     if (render_entities.size() != entities.size())
         render_entities.resize(entities.size());
 

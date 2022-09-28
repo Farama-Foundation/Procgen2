@@ -1,23 +1,17 @@
 #pragma once
 
 #include "common_components.h"
+#include "common_assets.h"
 
 #include <cmath>
 #include <algorithm>
 #include <raylib.h>
 
+// Sprite rendering system
 class System_Sprite_Render : System {
 private:
     std::vector<std::pair<float, Entity>> render_entities;
 
 public:
-    void update();
-};
-
-class System_Tilemap : System {
-private:
-    std::vector<char> tile_indices;
-
-public:
-    void generate();
+    void update(const Camera2D &camera);
 };
