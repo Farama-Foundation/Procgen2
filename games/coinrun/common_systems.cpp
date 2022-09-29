@@ -30,6 +30,9 @@ void System_Sprite_Render::update(const Camera2D &camera) {
         float rotation = transform.rotation + sprite.rotation;
         float scale = transform.scale * sprite.scale;
 
+        // If visible
+
+
         DrawTextureEx(sprite.texture, position, rotation, scale, sprite.tint);
     }
 }

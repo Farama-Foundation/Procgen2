@@ -46,6 +46,7 @@ set(SOURCE_PATH "${PROJECT_SOURCE_DIR}")
 set(SOURCES
     "${SOURCE_PATH}/coinrun.cpp"
     "${SOURCE_PATH}/ecs.cpp"
+    "${SOURCE_PATH}/helpers.cpp"
     "${SOURCE_PATH}/common_assets.cpp"
     "${SOURCE_PATH}/common_systems.cpp"
 )
