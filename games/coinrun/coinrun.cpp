@@ -6,6 +6,9 @@
 #include <cmath>
 #include <iostream>
 
+#include "tilemap.h"
+#include "common_systems.h"
+
 const int version = 100;
 const bool show_log = true;
 
@@ -28,6 +31,13 @@ const int num_actions = 15;
 
 const int screen_width = 800;
 const int screen_height = 800;
+
+std::mt19937 rng;
+Camera2D camera;
+
+// Systems
+std::shared_ptr<System_Sprite_Render> sprite_render;
+std::shared_ptr<System_Tilemap> tilemap;
 
 // Forward declarations
 void render_game();
@@ -96,6 +106,19 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     render_data.value_buffer_channels = 3;
     render_data.value_buffer.b = (uint8_t*)malloc(screen_width * screen_height * 3 * sizeof(uint8_t));
 
+    unsigned int seed = time(nullptr);
+
+    // Parse options
+    for (int i = 0; i < options_size; i++) {
+        std::string name(options[i].name);
+
+        if (name == "seed") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+
+            seed = options[i].value.i;
+        }
+    }
+
     // ---------------------- Game ----------------------
     
     if (!show_log)
@@ -105,6 +128,35 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     InitWindow(screen_width, screen_height, "CoinRun");
 
     SetTargetFPS(0); // Uncapped
+
+    // Seed RNG
+    rng.seed(seed);
+
+    // Initialize camera
+    camera = { 0 };
+    camera.zoom = 1.0f;
+
+    // Register components
+    c.register_component<Component_Transform>();
+    c.register_component<Component_Collision>();
+    c.register_component<Component_Dynamics>();
+    c.register_component<Component_Sprite>();
+    c.register_component<Component_Hazard>();
+    c.register_component<Component_Goal>();
+
+    // Sprite rendering system
+    sprite_render = c.register_system<System_Sprite_Render>();
+    Signature sprite_render_signature;
+    sprite_render_signature.set(c.get_component_type<Component_Sprite>());
+    c.set_system_signature<System_Sprite_Render>(sprite_render_signature);
+
+    // Tile map setup
+    tilemap = c.register_system<System_Tilemap>();
+    Signature tilemap_signature{ 0 }; // Operates on nothing
+    c.set_system_signature<System_Tilemap>(tilemap_signature);
+
+    tilemap->init();
+    tilemap->regenerate(rng, System_Tilemap::Config());
 
     return 0; // No error
 }
@@ -178,10 +230,26 @@ void cenv_close() {
 
 // Rendering
 void render_game() {
+    sprite_render->update();
+
     // Render here
     BeginDrawing();
-        ClearBackground(RAYWHITE);
-        DrawText("Congrats! You created your first window!", 95, 100, 20, LIGHTGRAY);
+        BeginMode2D(camera);
+
+            ClearBackground(RAYWHITE);
+            DrawText("Congrats! You created your first window!", 95, 100, 20, LIGHTGRAY);
+
+            Rectangle camera_aabb;
+            camera_aabb.x = camera.target.x - camera.zoom * screen_width;
+            camera_aabb.y = camera.target.y - camera.zoom * screen_height;
+            camera_aabb.width = screen_width;
+            camera_aabb.height = screen_height;
+
+            sprite_render->render(camera_aabb, negative_z);
+            tilemap->render(camera_aabb, 0);
+            sprite_render->render(camera_aabb, positive_z);
+
+        EndMode2D();
     EndDrawing();
 }
 

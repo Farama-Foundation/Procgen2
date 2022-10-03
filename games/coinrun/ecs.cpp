@@ -1,11 +1,8 @@
 #include "ecs.h"
 
-Entity_Manager::Entity_Manager()
-: num_living_entities(0)
-{
-    for (Entity e = 0; e < max_entities; e++) {
+Entity_Manager::Entity_Manager() {
+    for (Entity e = 0; e < max_entities; e++)
         available_entities.push(e);
-    }
 }
 
 Entity Entity_Manager::create_entity() {

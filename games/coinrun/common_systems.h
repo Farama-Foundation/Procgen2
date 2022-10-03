@@ -7,11 +7,20 @@
 #include <algorithm>
 #include <raylib.h>
 
+// Selector for sprites to render
+enum Sprite_Render_Mode {
+    all,
+    positive_z,
+    negative_z
+};
+
 // Sprite rendering system
-class System_Sprite_Render : System {
+class System_Sprite_Render : public System {
 private:
     std::vector<std::pair<float, Entity>> render_entities;
 
 public:
-    void update(const Camera2D &camera);
+    void update();
+    void render(const Rectangle &camera_aabb, Sprite_Render_Mode mode);
 };
+

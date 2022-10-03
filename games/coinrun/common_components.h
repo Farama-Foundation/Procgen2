@@ -33,3 +33,13 @@ struct Component_Sprite {
 
     Texture2D texture;
 };
+
+// Reset-triggering
+struct Component_Hazard {};
+
+struct Component_Goal {};
+
+// Game logic
+struct Component_Sweeper {
+    float velocity_x = 0.15f;
+};

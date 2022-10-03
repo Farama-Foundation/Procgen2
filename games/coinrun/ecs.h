@@ -27,7 +27,7 @@ private:
 
     std::array<Signature, max_entities> signatures;
 
-    int num_living_entities;
+    int num_living_entities = 0;
 
 public:
     Entity_Manager();
@@ -63,7 +63,7 @@ private:
     std::unordered_map<Entity, int> entity_to_index;
     std::unordered_map<int, Entity> index_to_entity;
 
-    int size;
+    int size = 0;
 
 public:
     void insert(Entity e, T component) {
@@ -120,7 +120,7 @@ private:
     std::unordered_map<size_t, Component_Type> component_types;
     std::unordered_map<size_t, std::shared_ptr<Interface_Component_Array>> component_arrays;
 
-    Component_Type next_component_type;
+    Component_Type next_component_type = 0;
 
     template<typename T>
     std::shared_ptr<Component_Array<T>> get_component_array() {
@@ -201,7 +201,7 @@ public:
 
         auto system = std::make_shared<T>();
 
-        systems[id] = system;
+        systems[id] = std::static_pointer_cast<System>(system);
         
         return system;
     }

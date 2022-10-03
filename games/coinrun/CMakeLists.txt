@@ -49,6 +49,7 @@ set(SOURCES
     "${SOURCE_PATH}/helpers.cpp"
     "${SOURCE_PATH}/common_assets.cpp"
     "${SOURCE_PATH}/common_systems.cpp"
+    "${SOURCE_PATH}/tilemap.cpp"
 )
 
 add_library(CoinRun SHARED ${SOURCES})
