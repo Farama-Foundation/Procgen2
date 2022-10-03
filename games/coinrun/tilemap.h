@@ -3,6 +3,7 @@
 #include "common_components.h"
 #include "common_assets.h"
 #include "helpers.h"
+#include "ecs.h"
 
 #include <cmath>
 #include <algorithm>
@@ -46,6 +47,9 @@ private:
 
     std::vector<Tile_ID> tile_ids;
 
+    void spawn_enemy_saw(int x, int y);
+    void spawn_enemy_mob(int x, int y, std::mt19937 &rng);
+
 public:
     // Initialize the tilemap
     void init();
@@ -66,11 +70,10 @@ public:
 
     Tile_ID get(int x, int y) {
         if (x < 0 || y < 0 || x >= map_width || y >= map_height)
-            return empty;
+            return wall_mid; // Out of bounds is a wall
 
-        return tile_ids[y + x  * map_height];
+        return tile_ids[y + x * map_height];
     }
 
     void render(const Rectangle &camera_aabb, int theme);
 };
-

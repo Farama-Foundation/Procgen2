@@ -41,11 +41,11 @@ void System_Sprite_Render::render(const Rectangle &camera_aabb, Sprite_Render_Mo
         float scale = transform.scale * sprite.scale;
 
         // Find sprite AABB rectangle
-        Rectangle aabb = (Rectangle){ position.x, position.y, (float)sprite.texture.width, (float)sprite.texture.height };
+        Rectangle aabb = (Rectangle){ position.x, position.y, sprite.texture.width * pixels_to_unit, sprite.texture.height * pixels_to_unit };
         aabb = rotated_scaled_AABB(aabb, rotation, scale);
 
         // If visible
         if (CheckCollisionRecs(aabb, camera_aabb))
-            DrawTextureEx(sprite.texture, position, rotation, scale, sprite.tint);
+            DrawTextureEx(sprite.texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, rotation, scale * unit_to_pixels / sprite.texture.width, sprite.tint);
     }
 }

@@ -2,6 +2,7 @@
 
 #include "common_components.h"
 #include "common_assets.h"
+#include "ecs.h"
 
 #include <cmath>
 #include <algorithm>

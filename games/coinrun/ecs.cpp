@@ -58,3 +58,5 @@ void Coordinator::destroy_entity(Entity e) {
     component_manager.entity_destroyed(e);
     system_manager.entity_destroyed(e);
 }
+
+Coordinator c;

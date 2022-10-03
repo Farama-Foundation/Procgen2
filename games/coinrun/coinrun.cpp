@@ -39,9 +39,12 @@ Camera2D camera;
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
 
+System_Tilemap::Config tilemap_config;
+
 // Forward declarations
 void render_game();
 void copy_render_to_obs();
+void reset();
 
 void handle_log_do_nothing(int logLevel, const char *text, va_list args) {
     // Do nothing
@@ -135,6 +138,9 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     // Initialize camera
     camera = { 0 };
     camera.zoom = 1.0f;
+    camera.offset = (Vector2){ screen_width * 0.5f, screen_height * 0.5f };
+
+    std::cout << "Registering components..." << std::endl;
 
     // Register components
     c.register_component<Component_Transform>();
@@ -143,6 +149,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Sprite>();
     c.register_component<Component_Hazard>();
     c.register_component<Component_Goal>();
+    c.register_component<Component_Sweeper>();
 
     // Sprite rendering system
     sprite_render = c.register_system<System_Sprite_Render>();
@@ -156,12 +163,14 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.set_system_signature<System_Tilemap>(tilemap_signature);
 
     tilemap->init();
-    tilemap->regenerate(rng, System_Tilemap::Config());
+    tilemap->regenerate(rng, tilemap_config);
 
     return 0; // No error
 }
 
 int32_t cenv_reset(int32_t seed, cenv_option* options, int32_t options_size) {
+    reset();
+
     render_game();
 
     copy_render_to_obs();
@@ -173,6 +182,21 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     render_game();
 
     copy_render_to_obs();
+
+    float speed = 20.0f;
+
+    if (IsKeyDown(KEY_A))
+        camera.target.x -= speed;
+    else if (IsKeyDown(KEY_D))
+        camera.target.x += speed;
+
+    if (IsKeyDown(KEY_S))
+        camera.target.y += speed;
+    else if (IsKeyDown(KEY_W))
+        camera.target.y -= speed;
+
+    if (GetKeyPressed() == KEY_R)
+        reset();
 
     // Set observation from last render
     step_data.reward.f = 0.0f;
@@ -236,14 +260,13 @@ void render_game() {
     BeginDrawing();
         BeginMode2D(camera);
 
-            ClearBackground(RAYWHITE);
-            DrawText("Congrats! You created your first window!", 95, 100, 20, LIGHTGRAY);
+            ClearBackground(BLACK);
 
             Rectangle camera_aabb;
-            camera_aabb.x = camera.target.x - camera.zoom * screen_width;
-            camera_aabb.y = camera.target.y - camera.zoom * screen_height;
-            camera_aabb.width = screen_width;
-            camera_aabb.height = screen_height;
+            camera_aabb.x = (camera.target.x - camera.zoom * screen_width * 0.5f) * pixels_to_unit;
+            camera_aabb.y = (camera.target.y - camera.zoom * screen_height * 0.5f) * pixels_to_unit;
+            camera_aabb.width = screen_width * camera.zoom * pixels_to_unit;
+            camera_aabb.height = screen_height * camera.zoom * pixels_to_unit;
 
             sprite_render->render(camera_aabb, negative_z);
             tilemap->render(camera_aabb, 0);
@@ -274,4 +297,8 @@ void copy_render_to_obs() {
 
     UnloadImage(obsImg);
     UnloadImage(screen);
+}
+
+void reset() {
+
 }

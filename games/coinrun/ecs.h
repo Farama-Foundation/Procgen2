@@ -168,7 +168,7 @@ public:
 
     template<typename T>
     T &get_component(Entity e) {
-        get_component_array<T>()->get(e);
+        return get_component_array<T>()->get(e);
     }
 
     void entity_destroyed(Entity e) {
@@ -282,4 +282,4 @@ public:
     }
 };
 
-static Coordinator c;
+extern Coordinator c;

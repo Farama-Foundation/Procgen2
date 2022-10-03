@@ -1,4 +1,5 @@
 #include "tilemap.h"
+#include <iostream>
 
 void System_Tilemap::init() {
     id_to_textures.resize(num_ids);
@@ -43,24 +44,24 @@ void System_Tilemap::set_area_with_top(int x, int y, int width, int height, Tile
 }
 
 // Spawning helpers
-void spawn_enemy_saw(int x, int y) {
+void System_Tilemap::spawn_enemy_saw(int x, int y) {
     Entity e = c.create_entity();
 
-    Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f };
+    Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(map_height - 1 - y) + 0.5f };
 
     Texture2D tex = manager_texture.get("assets/kenney/Enemies/saw.png").texture;
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .z = -1.0f, .texture = tex });
+    c.add_component(e, Component_Sprite{ .z = 1.0f, .texture = tex });
     c.add_component(e, Component_Hazard{});
 }
 
-void spawn_enemy_mob(int x, int y, std::mt19937 &rng) {
+void System_Tilemap::spawn_enemy_mob(int x, int y, std::mt19937 &rng) {
     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
     Entity e = c.create_entity();
 
-    Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f };
+    Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(map_height - 1 - y) + 0.5f };
 
     std::uniform_int_distribution<int> walking_enemy_dist(0, walking_enemies.size() - 1);
 
@@ -85,7 +86,14 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
 
     tile_ids.resize(map_width * map_height);
 
+    // Clear
     std::fill(tile_ids.begin(), tile_ids.end(), empty);
+
+    // Initialize floors and walls
+    set_area(0, 0, main_width, 1, wall_top);
+    set_area(0, 0, 1, main_height, wall_mid);
+    set_area(main_width - 1, 0, 1, main_height, wall_mid);
+    set_area(0, main_height - 1, main_width, 1, wall_mid);
 
     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
@@ -153,52 +161,52 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
             if (pit_width > max_dx) {
                 pit_width = max_dx;
                 x2 = dx - x1 - pit_width;
+            }
 
-                set_area_with_top(curr_x, 0, x1, curr_y, wall_mid, wall_top);
-                set_area_with_top(curr_x + dx - x2, 0, x2, curr_y, wall_mid, wall_top);
+            set_area_with_top(curr_x, 0, x1, curr_y, wall_mid, wall_top);
+            set_area_with_top(curr_x + dx - x2, 0, x2, curr_y, wall_mid, wall_top);
 
-                std::uniform_int_distribution<int> lava_height_dist(1, curr_y - 3);
+            std::uniform_int_distribution<int> lava_height_dist(1, curr_y - 3);
 
-                int lava_height = lava_height_dist(rng);
+            int lava_height = lava_height_dist(rng);
 
-                switch (danger_type) {
-                case 0:
-                    set_area_with_top(curr_x + x1, 1, pit_width, lava_height, lava_mid, lava_top);
+            switch (danger_type) {
+            case 0:
+                set_area_with_top(curr_x + x1, 1, pit_width, lava_height, lava_mid, lava_top);
 
-                    break;
-                case 1:
-                    for (int i = 0; i < pit_width; i++)
-                        spawn_enemy_saw(curr_x + x1 + i, 1);
+                break;
+            case 1:
+                for (int i = 0; i < pit_width; i++)
+                    spawn_enemy_saw(curr_x + x1 + i, 1);
 
-                    break;
-                case 2:
-                    for (int i = 0; i < pit_width; i++)
-                        spawn_enemy_mob(curr_x + x1 + i, 1, rng);
+                break;
+            case 2:
+                for (int i = 0; i < pit_width; i++)
+                    spawn_enemy_mob(curr_x + x1 + i, 1, rng);
 
-                    break;
+                break;
+            }
+
+            if (pit_width > 4) {
+                std::uniform_int_distribution<int> dist2(1, 2);
+
+                int x3, w1;
+
+                if (pit_width == 5) {
+                    x3 = dist2(rng);
+                    w1 = dist2(rng);
+                }
+                else if (pit_width == 6) {
+                    x3 = dist2(rng) + 1;
+                    w1 = dist2(rng);
+                }
+                else {
+                    x3 = dist2(rng) + 1;
+                    int x4 = dist2(rng) + 1;
+                    w1 = pit_width - x3 - x4;
                 }
 
-                if (pit_width > 4) {
-                    std::uniform_int_distribution<int> dist2(1, 2);
-
-                    int x3, w1;
-
-                    if (pit_width == 5) {
-                        x3 = dist2(rng);
-                        w1 = dist2(rng);
-                    }
-                    else if (pit_width == 6) {
-                        x3 = dist2(rng) + 1;
-                        w1 = dist2(rng);
-                    }
-                    else {
-                        x3 = dist2(rng) + 1;
-                        int x4 = dist2(rng) + 1;
-                        w1 = pit_width - x3 - x4;
-                    }
-
-                    set_area_with_top(curr_x + x1 + x3, curr_y - 1, w1, 1, wall_mid, wall_top);
-                }
+                set_area_with_top(curr_x + x1 + x3, curr_y - 1, w1, 1, wall_mid, wall_top);
             }
         }
         else {
@@ -250,10 +258,10 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
 }
 
 void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
-    int lower_x = std::max(0, static_cast<int>(camera_aabb.x));
-    int lower_y = std::max(0, static_cast<int>(camera_aabb.y));
-    int upper_x = std::min(map_width - 1, static_cast<int>(camera_aabb.x + camera_aabb.width) + 1);
-    int upper_y = std::min(map_height - 1, static_cast<int>(camera_aabb.y + camera_aabb.height) + 1);
+    int lower_x = std::floor(camera_aabb.x);
+    int lower_y = std::floor(camera_aabb.y);
+    int upper_x = std::ceil(camera_aabb.x + camera_aabb.width);
+    int upper_y = std::ceil(camera_aabb.y + camera_aabb.height);
     
     // Temporary rng with constant seed to render visual-only randomness
     std::mt19937 render_rng(0);
@@ -262,11 +270,20 @@ void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
 
     for (int y = lower_y; y <= upper_y; y++)
         for (int x = lower_x; x <= upper_x; x++) {
-            Tile_ID id = get(x, y);
+            Tile_ID id = get(x, map_height - 1 - y);
 
-            if (id == wall_mid || id == wall_top || id == lava_mid || id == lava_top)
-                DrawTexture(id_to_textures[tile_ids[id]][theme].texture, x, y, WHITE);
+            if (id == 0) // Empty
+                continue;
+
+            Texture2D tex;
+
+            if (id == wall_mid || id == wall_top)
+                tex = id_to_textures[id][theme].texture;
+            else if (id == lava_mid || id == lava_top)
+                tex = id_to_textures[id][0].texture;
             else if (id == crate)
-                DrawTexture(id_to_textures[tile_ids[id]][crate_dist(render_rng)].texture, x, y, WHITE);
+                tex = id_to_textures[id][crate_dist(render_rng)].texture;
+
+            DrawTextureEx(tex, (Vector2){ x * unit_to_pixels, y * unit_to_pixels }, 0.0f, unit_to_pixels / tex.width, WHITE);
         }
 }
