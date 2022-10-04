@@ -10,7 +10,15 @@ Rectangle rotated_scaled_AABB(const Rectangle &rectangle, float rotation, float 
 
     for (int x = -1; x <= 1; x += 2)
         for (int y = -1; y <= 1; y += 2) {
-            Vector2 point = (Vector2){ center.x + std::cos(rotation) * half_size.x * x * scale, std::sin(rotation) * half_size.y * y * scale };
+            float cos_rot = std::cos(rotation);
+            float sin_rot = std::sin(rotation);
+
+            Vector2 corner{ half_size.x * x * scale, half_size.y * y * scale };
+
+            // Rotate corner to get offset
+            Vector2 offset{ cos_rot * corner.x - sin_rot * corner.y, sin_rot * corner.x + cos_rot * corner.y };
+            
+            Vector2 point = (Vector2){ center.x + offset.x, center.y + offset.y };
 
             // Expand bounds
             if (point.x < lower.x)

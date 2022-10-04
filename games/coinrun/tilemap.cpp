@@ -52,7 +52,7 @@ void System_Tilemap::spawn_enemy_saw(int x, int y) {
     Texture2D tex = manager_texture.get("assets/kenney/Enemies/saw.png").texture;
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .z = 1.0f, .texture = tex });
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = tex });
     c.add_component(e, Component_Hazard{});
 }
 
@@ -68,7 +68,7 @@ void System_Tilemap::spawn_enemy_mob(int x, int y, std::mt19937 &rng) {
     Texture2D tex = manager_texture.get("assets/kenney/Enemies/" + walking_enemies[walking_enemy_dist(rng)] + ".png").texture;
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .z = 1.0f, .texture = tex });
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = tex });
     c.add_component(e, Component_Hazard{});
     c.add_component(e, Component_Sweeper{ .velocity_x = 0.15f * ((dist01(rng) < 0.5f) * 2.0f - 1.0f) });
 }

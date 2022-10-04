@@ -300,5 +300,7 @@ void copy_render_to_obs() {
 }
 
 void reset() {
+    c.destroy_all_entities();
 
+    tilemap->regenerate(rng, tilemap_config);
 }

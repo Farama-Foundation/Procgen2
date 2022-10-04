@@ -12,6 +12,8 @@ Entity Entity_Manager::create_entity() {
     Entity e = available_entities.front();
     available_entities.pop();
 
+    entities_in_use.insert(e);
+
     num_living_entities++;
 
     return e;
@@ -25,6 +27,10 @@ void Entity_Manager::destroy_entity(Entity e) {
     signatures[e].reset();
 
     available_entities.push(e);
+
+    assert(entities_in_use.find(e) != entities_in_use.end());
+
+    entities_in_use.erase(e);
 
     num_living_entities--;
 }
@@ -57,6 +63,21 @@ void Coordinator::destroy_entity(Entity e) {
     entity_manager.destroy_entity(e);
     component_manager.entity_destroyed(e);
     system_manager.entity_destroyed(e);
+}
+
+void Coordinator::destroy_all_entities() {
+    int num_entities = entity_manager.get_num_living_entities();
+
+    for (Entity e = 0; e < num_entities; e++) {
+        bool used = entity_manager.in_use(e);
+
+        if (used) 
+            destroy_entity(e);
+        else {
+            if (num_entities < max_entities)
+                num_entities++;
+        }
+    }
 }
 
 Coordinator c;

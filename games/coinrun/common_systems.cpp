@@ -36,7 +36,12 @@ void System_Sprite_Render::render(const Rectangle &camera_aabb, Sprite_Render_Mo
             break;
 
         // Relative
-        Vector2 position = (Vector2){ transform.position.x + std::cos(transform.rotation) * sprite.position.x, transform.position.y + std::sin(transform.rotation) * sprite.position.y };
+        float cos_rot = std::cos(transform.rotation);
+        float sin_rot = std::sin(transform.rotation);
+
+        Vector2 offset{ cos_rot * sprite.position.x - sin_rot * sprite.position.y, sin_rot * sprite.position.x + cos_rot * sprite.position.y };
+
+        Vector2 position = (Vector2){ transform.position.x + offset.x, transform.position.y + offset.y };
         float rotation = transform.rotation + sprite.rotation;
         float scale = transform.scale * sprite.scale;
 

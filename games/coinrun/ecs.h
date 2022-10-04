@@ -24,6 +24,7 @@ typedef std::bitset<max_components> Signature;
 class Entity_Manager {
 private:
     std::queue<Entity> available_entities;
+    std::unordered_set<Entity> entities_in_use;
 
     std::array<Signature, max_entities> signatures;
 
@@ -46,6 +47,14 @@ public:
         assert(e >= 0 && e < max_entities);
 
         return signatures[e];
+    }
+
+    bool in_use(Entity e) {
+        return entities_in_use.find(e) != entities_in_use.end();
+    };
+
+    int get_num_living_entities() const {
+        return num_living_entities;
     }
 };
 
@@ -233,6 +242,7 @@ public:
     }
 
     void destroy_entity(Entity e);
+    void destroy_all_entities();
 
     template<typename T>
     void register_component() {
