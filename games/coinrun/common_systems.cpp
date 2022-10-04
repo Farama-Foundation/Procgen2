@@ -2,14 +2,30 @@
 
 #include "helpers.h"
 
-void System_Sprite_Render::update() {
+void System_Sprite_Render::update(float dt) {
     if (render_entities.size() != entities.size())
         render_entities.resize(entities.size());
 
     int index = 0;
 
     for (auto const &e : entities) {
-        auto const &sprite = c.get_component<Component_Sprite>(e);
+        auto &sprite = c.get_component<Component_Sprite>(e);
+
+        // If also has animation
+        if (c.entity_manager.get_signature(e)[c.component_manager.get_component_type<Component_Animation>()]) {
+            // Has animation component
+            auto &animation = c.get_component<Component_Animation>(e);
+
+            animation.t += dt;
+
+            while (animation.t >= animation.rate) {
+                animation.t -= animation.rate;
+                
+                animation.frame_index = (animation.frame_index + 1) % animation.frames.size();
+            }
+
+            sprite.texture = animation.frames[animation.frame_index];
+        }
 
         render_entities[index] = std::make_pair(sprite.z, e);
         index++;
@@ -28,6 +44,11 @@ void System_Sprite_Render::render(const Rectangle &camera_aabb, Sprite_Render_Mo
 
         auto const &sprite = c.get_component<Component_Sprite>(e);
         auto const &transform = c.get_component<Component_Transform>(e);
+
+        if (c.entity_manager.get_signature(e)[c.component_manager.get_component_type<Component_Animation>()]) {
+            // Has animation component
+            auto const &animation = c.get_component<Component_Animation>(e);
+        }
 
         // Sorting relative to tile map system - negative is behind, positive in front
         if (mode == positive_z && sprite.z < 0.0f)

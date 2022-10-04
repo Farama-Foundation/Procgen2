@@ -21,7 +21,7 @@ private:
     std::vector<std::pair<float, Entity>> render_entities;
 
 public:
-    void update();
+    void update(float dt);
     void render(const Rectangle &camera_aabb, Sprite_Render_Mode mode);
 };
 

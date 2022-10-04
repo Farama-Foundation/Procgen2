@@ -231,12 +231,11 @@ public:
 };
 
 class Coordinator {
-private:
+public:
     Entity_Manager entity_manager;
     Component_Manager component_manager;
     System_Manager system_manager;
 
-public:
     Entity create_entity() {
         return entity_manager.create_entity();
     }

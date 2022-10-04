@@ -35,6 +35,8 @@ const int screen_height = 800;
 std::mt19937 rng;
 Camera2D camera;
 
+float dt = 0.017f;
+
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
@@ -147,6 +149,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Collision>();
     c.register_component<Component_Dynamics>();
     c.register_component<Component_Sprite>();
+    c.register_component<Component_Animation>();
     c.register_component<Component_Hazard>();
     c.register_component<Component_Goal>();
     c.register_component<Component_Sweeper>();
@@ -254,7 +257,7 @@ void cenv_close() {
 
 // Rendering
 void render_game() {
-    sprite_render->update();
+    sprite_render->update(dt);
 
     // Render here
     BeginDrawing();

@@ -34,6 +34,14 @@ struct Component_Sprite {
     Texture2D texture;
 };
 
+struct Component_Animation {
+    std::vector<Texture2D> frames;
+
+    int frame_index = 0;
+    float rate = 0.017f;
+    float t = 0.0f;
+};
+
 // Reset-triggering
 struct Component_Hazard {};
 

@@ -29,6 +29,9 @@ void System_Tilemap::init() {
         manager_texture.get("assets/kenney/Enemies/" + walking_enemies[i] + ".png");
         manager_texture.get("assets/kenney/Enemies/" + walking_enemies[i] + "_move.png");
     }
+
+    manager_texture.get("assets/kenney/Enemies/sawHalf.png");
+    manager_texture.get("assets/kenney/Enemies/sawHalf_move.png");
 }
 
 // Tile manipulation
@@ -49,11 +52,16 @@ void System_Tilemap::spawn_enemy_saw(int x, int y) {
 
     Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(map_height - 1 - y) + 0.5f };
 
-    Texture2D tex = manager_texture.get("assets/kenney/Enemies/saw.png").texture;
+    Component_Animation animation;
+    animation.frames.resize(2);
+    animation.frames[0] = manager_texture.get("assets/kenney/Enemies/sawHalf.png").texture;
+    animation.frames[1] = manager_texture.get("assets/kenney/Enemies/sawHalf_move.png").texture;
+    animation.rate = 1.0f / 60.0f; // Every frame at 60 fps
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = tex });
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f });
     c.add_component(e, Component_Hazard{});
+    c.add_component(e, animation);
 }
 
 void System_Tilemap::spawn_enemy_mob(int x, int y, std::mt19937 &rng) {
