@@ -72,7 +72,7 @@ void System_Sprite_Render::render(const Rectangle &camera_aabb, Sprite_Render_Mo
         if (CheckCollisionRecs(aabb, camera_aabb)) {
             if (sprite.flip_x) {
                 Rectangle source{ static_cast<float>(sprite.texture.width), 0.0f, -static_cast<float>(sprite.texture.width), static_cast<float>(sprite.texture.height) };
-                Rectangle dest{ position.x * unit_to_pixels, position.y * unit_to_pixels, scale * unit_to_pixels / sprite.texture.width, scale * unit_to_pixels / sprite.texture.width };
+                Rectangle dest{ position.x * unit_to_pixels, position.y * unit_to_pixels, scale * unit_to_pixels, scale * unit_to_pixels * static_cast<float>(sprite.texture.height) / static_cast<float>(sprite.texture.width) };
 
                 DrawTexturePro(sprite.texture, source, dest, (Vector2){ 0.0f, 0.0f }, rotation, sprite.tint);
             }
