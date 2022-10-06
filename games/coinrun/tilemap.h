@@ -88,7 +88,7 @@ public:
     void render(const Rectangle &camera_aabb, int theme);
 
     // General collision detection
-    Vector2 get_collision_offset(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func);
+    Vector2 get_collision_offset(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y = 0.0f);
 
     // For fall-through platforms
     void update_no_collide(const Rectangle &player_rectangle, const Rectangle &outer_rectangle);
@@ -98,5 +98,13 @@ public:
             return;
 
         no_collide_mask[y + x * map_height] = true;
+    }
+
+    int get_width() const {
+        return map_width;
+    }
+
+    int get_height() const {
+        return map_height;
     }
 };

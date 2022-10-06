@@ -41,8 +41,10 @@ float dt = 0.017f;
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
 std::shared_ptr<System_Mob_AI> mob_ai;
+std::shared_ptr<System_Agent> agent;
 
 System_Tilemap::Config tilemap_config;
+int current_map_theme = 0;
 
 // Big list of different background images
 std::vector<std::string> background_names {
@@ -101,6 +103,8 @@ std::vector<Texture2D> background_textures;
 
 int current_background_index = 0;
 float current_background_offset_x = 0.0f;
+
+int current_agent_theme = 0;
 
 // Forward declarations
 void render_game();
@@ -233,6 +237,14 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only to mobs
     c.set_system_signature<System_Mob_AI>(mob_ai_signature);
 
+    // Agent system setup
+    agent = c.register_system<System_Agent>();
+    Signature agent_signature;
+    agent_signature.set(c.get_component_type<Component_Agent>()); // Operate only to mobs
+    c.set_system_signature<System_Agent>(agent_signature);
+
+    agent->init();
+
     // Load backgrounds
     background_textures.resize(background_names.size());
 
@@ -277,6 +289,7 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
 
     // Update systems
     mob_ai->update(dt);
+    agent->update(dt, camera);
     sprite_render->update(dt);
 
     // Set observation from last render
@@ -360,8 +373,9 @@ void render_game() {
             camera_aabb.height = screen_height * camera.zoom * pixels_to_unit;
 
             sprite_render->render(camera_aabb, negative_z);
-            tilemap->render(camera_aabb, 0);
+            tilemap->render(camera_aabb, current_map_theme);
             sprite_render->render(camera_aabb, positive_z);
+            agent->render(current_agent_theme);
 
         EndMode2D();
     EndDrawing();
@@ -395,6 +409,7 @@ void reset() {
 
     tilemap->regenerate(rng, tilemap_config);
 
+    // Determine background (themeing)
     std::uniform_int_distribution<int> background_dist(0, background_textures.size() - 1);
 
     current_background_index = background_dist(rng);
@@ -404,5 +419,21 @@ void reset() {
     current_background_offset_x = dist01(rng);
 
     // Spawn the player (agent)
+    Entity e = c.create_entity();
 
+    Vector2 pos{ 1.5f, tilemap->get_height() - 1 - 1.0f };
+
+    c.add_component(e, Component_Transform{ .position{ pos } });
+    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -1.0f, 1.0f, 1.0f } });
+    c.add_component(e, Component_Dynamics{});
+    c.add_component(e, Component_Agent{});
+
+    // Determine themes
+    std::uniform_int_distribution<int> agent_theme_dist(0, agent_themes.size() - 1);
+
+    current_agent_theme = agent_theme_dist(rng);
+
+    std::uniform_int_distribution<int> map_theme_dist(0, wall_themes.size() - 1);
+
+    current_map_theme = map_theme_dist(rng);
 }

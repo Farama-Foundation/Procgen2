@@ -4,6 +4,8 @@
 
 #include "helpers.h"
 
+#include <iostream>
+
 void System_Sprite_Render::update(float dt) {
     if (render_entities.size() != entities.size())
         render_entities.resize(entities.size());
@@ -20,11 +22,10 @@ void System_Sprite_Render::update(float dt) {
 
             animation.t += dt;
 
-            while (animation.t >= animation.rate) {
-                animation.t -= animation.rate;
+            int frames_advance = animation.t / animation.rate;
+            animation.t -= frames_advance; 
                 
-                animation.frame_index = (animation.frame_index + 1) % animation.frames.size();
-            }
+            animation.frame_index = (animation.frame_index + frames_advance) % animation.frames.size();
 
             sprite.texture = animation.frames[animation.frame_index];
         }
@@ -110,8 +111,6 @@ void System_Mob_AI::update(float dt) {
     }
 }
 
-const std::vector<std::string> agent_themes = { "Beige", "Blue", "Green", "Pink", "Yellow" };
-
 void System_Agent::init() {
     stand_textures.resize(agent_themes.size());
     jump_textures.resize(agent_themes.size());
@@ -128,9 +127,9 @@ void System_Agent::init() {
 
 void System_Agent::update(float dt, Camera2D &camera) {
     // Parameters
-    const float max_jump = 1.5f;
-    const float gravity = 0.2f;
-    const float max_speed = 0.5f;
+    const float max_jump = 8.0f;
+    const float gravity = 5.0f;
+    const float max_speed = 4.0f;
     const float mix = 0.2f;
     const float air_control = 0.15f;
 
@@ -141,6 +140,34 @@ void System_Agent::update(float dt, Camera2D &camera) {
 
     for (auto const &e : entities) {
         auto &agent = c.get_component<Component_Agent>(e);
+
+        int new_action = 0;
+
+        if (IsKeyDown(KEY_RIGHT))
+            new_action = 0;
+        else if (IsKeyDown(KEY_LEFT))
+            new_action = 6;
+        else
+            new_action = 4;
+
+        if (new_action != 4) {
+            if (IsKeyDown(KEY_UP))
+                new_action += 2;
+            else if (IsKeyDown(KEY_DOWN))
+                new_action += 0;
+            else
+                new_action += 1;
+        }
+        else {
+            if (IsKeyDown(KEY_UP))
+                new_action = 5;
+            else if (IsKeyDown(KEY_DOWN))
+                new_action = 3;
+            else
+                new_action = 4;
+        }
+
+        agent.action = new_action;
 
         auto &transform = c.get_component<Component_Transform>(e);
         auto &dynamics = c.get_component<Component_Dynamics>(e);
@@ -162,38 +189,53 @@ void System_Agent::update(float dt, Camera2D &camera) {
         if (std::abs(dynamics.velocity.x) < mix_x * max_speed)
             dynamics.velocity.x = 0.0f;
 
-        if (jump)
+        if (jump && agent.on_ground)
             dynamics.velocity.y = -max_jump;
         else if (fallthrough)
-            tilemap->set_no_collide(transform.position.x, transform.position.y);
+            tilemap->set_no_collide(transform.position.x, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
 
-        if (!agent.on_ground)
-            dynamics.velocity.y -= gravity * dt;
+        dynamics.velocity.y += gravity * dt;
         
         // Max fall speed is jump speed
         if (std::abs(dynamics.velocity.y) > max_jump)
             dynamics.velocity.y = (dynamics.velocity.y > 0.0f ? 1.0f : -1.0f) * max_jump;
 
         // Update no collide mask (for fallthrough platform logic)
-        tilemap->update_no_collide(world_collision, Rectangle{ transform.position.x - 8.0f, transform.position.x - 8.0f, 16.0f, 16.0f });
+        tilemap->update_no_collide(world_collision, Rectangle{ transform.position.x - 8.0f, transform.position.y - 8.0f, 16.0f, 16.0f });
 
         // Move
         transform.position.x += dynamics.velocity.x * dt;
         transform.position.y += dynamics.velocity.y * dt;
 
-        Vector2 offset = tilemap->get_collision_offset(collision.bounds, [](Tile_ID id) -> Collision_Type {
+        Vector2 offset = tilemap->get_collision_offset(world_collision, [](Tile_ID id) -> Collision_Type {
             return (id == wall_mid || id == wall_top ? full : (id == crate ? down_only : none));
-        });
+        }, dynamics.velocity.y);
 
         // If moved up, on ground
-        agent.on_ground = offset.y >= 0.0f;
+        agent.on_ground = offset.y < 0.0f;
 
         // Correct position
         transform.position.x += offset.x;
         transform.position.y += offset.y;
 
+        if (offset.x != 0.0f)
+            dynamics.velocity.x = 0.0f;
+        
+        if (offset.y != 0.0f)
+            dynamics.velocity.y = 0.0f;
+
         // Camera follows the agent
-        camera.target = transform.position;
+        camera.target.x = transform.position.x * unit_to_pixels;
+        camera.target.y = transform.position.y * unit_to_pixels;
+
+        // Animation cycle
+        agent.t += agent.rate * dt;
+        agent.t = std::fmod(agent.t, 1.0f);
+
+        if (movement_x > 0.0f)
+            agent.face_forward = true;
+        else if (movement_x < 0.0f)
+            agent.face_forward = false;
     }
 }
 
@@ -205,13 +247,25 @@ void System_Agent::render(int theme) {
         auto const &transform = c.get_component<Component_Transform>(e);
         auto const &dynamics = c.get_component<Component_Dynamics>(e);
 
+        // Select the correct texture
         Texture2D texture;
 
-        if (dynamics.velocity.x == 0.0f)
+        if (std::abs(dynamics.velocity.x) > 0.001f)
             texture = stand_textures[theme].texture;
+        else if (std::abs(dynamics.velocity.y) > 0.001f) 
+            texture = jump_textures[theme].texture;
+        else if (agent.t > 0.5f)
+            texture = walk2_textures[theme].texture;
+        else
+            texture = walk1_textures[theme].texture;
 
-        Vector2 position{ transform.position.x - 0.5f, transform.position.y - 1.0f };
+        float flip = agent.face_forward ? 1.0f : -1.0f;
 
-        DrawTextureEx(texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, 0.0f, unit_to_pixels / texture.width, WHITE);
+        Vector2 position{ transform.position.x - 0.5f, transform.position.y - 2.0f };
+
+        Rectangle source{ (agent.face_forward ? 0.0f : texture.width), 0.0f, flip * static_cast<float>(texture.width), static_cast<float>(texture.height) };
+        Rectangle dest{ position.x * unit_to_pixels, position.y * unit_to_pixels, 1.0f * unit_to_pixels, 2.0f * unit_to_pixels };
+
+        DrawTexturePro(texture, source, dest, (Vector2){ 0 }, 0.0f, WHITE);
     }
 }

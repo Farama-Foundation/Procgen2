@@ -36,6 +36,8 @@ public:
 
 // --------------------- Player --------------------
 
+static const std::vector<std::string> agent_themes = { "Beige", "Blue", "Green", "Pink", "Yellow" };
+
 class System_Agent : public System {
 private:
     // Agent textures

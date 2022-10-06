@@ -299,7 +299,7 @@ void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
         }
 }
 
-Vector2 System_Tilemap::get_collision_offset(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func) {
+Vector2 System_Tilemap::get_collision_offset(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y) {
     Vector2 offset{ 0 };
 
     int lower_x = std::floor(rectangle.x);
@@ -319,18 +319,20 @@ Vector2 System_Tilemap::get_collision_offset(const Rectangle &rectangle, const s
 
             Collision_Type type = collision_id_func(id);
 
-            if (type != none && !no_collide_mask[y + x * map_height]) {
+            if (type != none && !no_collide_mask[(map_height - 1 - y) + x * map_height]) {
                 tile.x = x;
                 tile.y = y;
 
                 Rectangle collision = GetCollisionRec(rectangle, tile);
                 Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
 
-                if (collision.width < collision.height)
-                    offset.x += collision.width * (collision_center.x > center.x ? -1.0f : 1.0f);
+                if (collision.width < collision.height) {
+                    if (type != down_only)
+                        offset.x += collision.width * (collision_center.x > center.x ? -1.0f : 1.0f);
+                }
                 else {
                     if (type == down_only)
-                        offset.y += collision.height * (collision_center.y > center.y ? -1.0f : 0.0f);
+                        offset.y += (velocity_y > 0.0f ? collision.height * (collision_center.y > center.y ? -1.0f : 0.0f) : 0.0f);
                     else
                         offset.y += collision.height * (collision_center.y > center.y ? -1.0f : 1.0f);
                 }
@@ -355,7 +357,7 @@ void System_Tilemap::update_no_collide(const Rectangle &player_rectangle, const 
         for (int x = lower_x; x <= upper_x; x++) {
             Tile_ID id = get(x, map_height - 1 - y);
 
-            int index = y + x * map_height;
+            int index = (map_height - 1 - y) + x * map_height;
 
             if (id == crate) {
                 tile.x = x;
