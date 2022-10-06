@@ -90,21 +90,28 @@ void System_Mob_AI::update(float dt) {
         Rectangle floor_sensor_left{ transform.position.x - 0.5f, transform.position.y + 0.1f, 1.0f, 0.8f };
         Rectangle floor_sensor_right{ transform.position.x + 1.5f, transform.position.y + 0.1f, 1.0f, 0.8f };
 
-        Vector2 wall_offset = tilemap->get_collision_offset(wall_sensor, [](Tile_ID id) -> Collision_Type {
+        std::pair<Vector2, bool> wall_collision_data = tilemap->get_collision(wall_sensor, [](Tile_ID id) -> Collision_Type {
             return (id == wall_mid || id == wall_top ? full : none);
         });
 
-        Vector2 floor_offset_left = tilemap->get_collision_offset(floor_sensor_left, [](Tile_ID id) -> Collision_Type {
+        std::pair<Vector2, bool> left_floor_collision_data = tilemap->get_collision(floor_sensor_left, [](Tile_ID id) -> Collision_Type {
             return (id == empty ? full : none);
         });
 
-        Vector2 floor_offset_right = tilemap->get_collision_offset(floor_sensor_right, [](Tile_ID id) -> Collision_Type {
+        std::pair<Vector2, bool> right_floor_collision_data = tilemap->get_collision(floor_sensor_right, [](Tile_ID id) -> Collision_Type {
             return (id == empty ? full : none);
         });
 
-        float delta_x = wall_offset.x + floor_offset_left.x + floor_offset_right.x;
+        float new_x = wall_collision_data.first.x;
 
-        transform.position.x += delta_x;
+        if (left_floor_collision_data.second)
+            new_x = left_floor_collision_data.first.x;
+        else if (right_floor_collision_data.second)
+            new_x = right_floor_collision_data.first.x;
+
+        float delta_x = new_x - transform.position.x;
+
+        transform.position.x = new_x;
 
         if ((delta_x > 0.0f) != (mob_ai.velocity_x > 0.0f))
             mob_ai.velocity_x *= -1.0f; // Rebound
@@ -130,7 +137,7 @@ void System_Agent::update(float dt, Camera2D &camera) {
     const float max_jump = 8.0f;
     const float gravity = 5.0f;
     const float max_speed = 4.0f;
-    const float mix = 0.2f;
+    const float mix = 10.0f;
     const float air_control = 0.15f;
 
     // Get tile map system
@@ -174,9 +181,6 @@ void System_Agent::update(float dt, Camera2D &camera) {
 
         const auto &collision = c.get_component<Component_Collision>(e);
 
-        // World space collision
-        Rectangle world_collision{ transform.position.x + collision.bounds.x, transform.position.y + collision.bounds.y, collision.bounds.width, collision.bounds.height };
-
         float movement_x = (agent.action == 0 || agent.action == 1) - (agent.action == 6 || agent.action == 7);
         bool jump = (agent.action == 2 || agent.action == 5 || agent.action == 8);
         bool fallthrough = (agent.action == 0 || agent.action == 3 || agent.action == 6);
@@ -184,15 +188,18 @@ void System_Agent::update(float dt, Camera2D &camera) {
         // Velocity control
         float mix_x = agent.on_ground ? mix : (mix * air_control);
 
-        dynamics.velocity.x += mix_x * (max_speed * movement_x - dynamics.velocity.x);
+        dynamics.velocity.x += mix_x * (max_speed * movement_x - dynamics.velocity.x) * dt;
 
-        if (std::abs(dynamics.velocity.x) < mix_x * max_speed)
+        if (std::abs(dynamics.velocity.x) < mix_x * max_speed * dt)
             dynamics.velocity.x = 0.0f;
 
         if (jump && agent.on_ground)
             dynamics.velocity.y = -max_jump;
-        else if (fallthrough)
-            tilemap->set_no_collide(transform.position.x, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
+        else if (fallthrough) {
+            // Set 1-2 tiles below to not collide
+            tilemap->set_no_collide(transform.position.x - 0.49f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
+            tilemap->set_no_collide(transform.position.x + 0.49f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
+        }
 
         dynamics.velocity.y += gravity * dt;
         
@@ -200,28 +207,33 @@ void System_Agent::update(float dt, Camera2D &camera) {
         if (std::abs(dynamics.velocity.y) > max_jump)
             dynamics.velocity.y = (dynamics.velocity.y > 0.0f ? 1.0f : -1.0f) * max_jump;
 
-        // Update no collide mask (for fallthrough platform logic)
-        tilemap->update_no_collide(world_collision, Rectangle{ transform.position.x - 8.0f, transform.position.y - 8.0f, 16.0f, 16.0f });
-
         // Move
         transform.position.x += dynamics.velocity.x * dt;
         transform.position.y += dynamics.velocity.y * dt;
 
-        Vector2 offset = tilemap->get_collision_offset(world_collision, [](Tile_ID id) -> Collision_Type {
+        // World space collision
+        Rectangle world_collision{ transform.position.x + collision.bounds.x, transform.position.y + collision.bounds.y, collision.bounds.width, collision.bounds.height };
+
+        std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
             return (id == wall_mid || id == wall_top ? full : (id == crate ? down_only : none));
         }, dynamics.velocity.y);
 
-        // If moved up, on ground
-        agent.on_ground = offset.y < 0.0f;
+        // Update no collide mask (for fallthrough platform logic) given some large bounds to check around the agent
+        tilemap->update_no_collide(world_collision, Rectangle{ transform.position.x - 8.0f, transform.position.y - 8.0f, 16.0f, 16.0f });
+
+        // If was moved up, on ground
+        Vector2 delta_position{ collision_data.first.x - world_collision.x, collision_data.first.y - world_collision.y };
+
+        agent.on_ground = delta_position.y <= 0.0f && collision_data.second;
 
         // Correct position
-        transform.position.x += offset.x;
-        transform.position.y += offset.y;
+        transform.position.x = collision_data.first.x - collision.bounds.x;
+        transform.position.y = collision_data.first.y - collision.bounds.y;
 
-        if (offset.x != 0.0f)
+        if (delta_position.x != 0.0f)
             dynamics.velocity.x = 0.0f;
         
-        if (offset.y != 0.0f)
+        if (delta_position.y != 0.0f)
             dynamics.velocity.y = 0.0f;
 
         // Camera follows the agent
@@ -250,9 +262,10 @@ void System_Agent::render(int theme) {
         // Select the correct texture
         Texture2D texture;
 
-        if (std::abs(dynamics.velocity.x) > 0.001f)
+        std::cout << agent.on_ground << std::endl;
+        if (std::abs(dynamics.velocity.x) < 0.01f)
             texture = stand_textures[theme].texture;
-        else if (std::abs(dynamics.velocity.y) > 0.001f) 
+        else if (!agent.on_ground) 
             texture = jump_textures[theme].texture;
         else if (agent.t > 0.5f)
             texture = walk2_textures[theme].texture;

@@ -94,11 +94,12 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     this->map_height = main_height;
 
     tile_ids.resize(map_width * map_height);
-    no_collide_mask.clear();
-    no_collide_mask.assign(tile_ids.size(), false);
+    crate_type_indices.resize(tile_ids.size());
+    no_collide_mask.resize(tile_ids.size());
 
     // Clear
     std::fill(tile_ids.begin(), tile_ids.end(), empty);
+    std::fill(no_collide_mask.begin(), no_collide_mask.end(), false);
 
     // Initialize floors and walls
     set_area(0, 0, main_width, 1, wall_top);
@@ -107,6 +108,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     set_area(0, main_height - 1, main_width, 1, wall_mid);
 
     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+    std::uniform_int_distribution<int> crate_dist(0, crate_types.size() - 1);
 
     std::uniform_int_distribution<int> difficulty_dist(1, 3);
 
@@ -253,8 +255,10 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
                     if (dist01(rng) < 0.5f && ob1_x != crate_x && ob2_x != crate_x) {
                         int pile_height = dist3(rng);
 
-                        for (int j = 0; j < pile_height; j++)
+                        for (int j = 0; j < pile_height; j++) {
                             set(crate_x, curr_y + j, crate);
+                            crate_type_indices[curr_y + j + crate_x * map_height] = crate_dist(rng);
+                        }
                     }
                 }
             }
@@ -277,7 +281,6 @@ void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
     // Temporary rng with constant seed to render visual-only randomness
     std::mt19937 render_rng(0);
 
-    std::uniform_int_distribution<int> crate_dist(0, crate_types.size() - 1);
 
     for (int y = lower_y; y <= upper_y; y++)
         for (int x = lower_x; x <= upper_x; x++) {
@@ -293,14 +296,15 @@ void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
             else if (id == lava_mid || id == lava_top)
                 tex = id_to_textures[id][0].texture;
             else if (id == crate)
-                tex = id_to_textures[id][crate_dist(render_rng)].texture;
+                tex = id_to_textures[id][crate_type_indices[map_height - 1 - y + x * map_height]].texture;
 
             DrawTextureEx(tex, (Vector2){ x * unit_to_pixels, y * unit_to_pixels }, 0.0f, unit_to_pixels / tex.width, WHITE);
         }
 }
 
-Vector2 System_Tilemap::get_collision_offset(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y) {
-    Vector2 offset{ 0 };
+std::pair<Vector2, bool> System_Tilemap::get_collision(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y) {
+    Vector2 position{ rectangle.x, rectangle.y };
+    bool collided = false;
 
     int lower_x = std::floor(rectangle.x);
     int lower_y = std::floor(rectangle.y);
@@ -324,22 +328,27 @@ Vector2 System_Tilemap::get_collision_offset(const Rectangle &rectangle, const s
                 tile.y = y;
 
                 Rectangle collision = GetCollisionRec(rectangle, tile);
-                Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
 
-                if (collision.width < collision.height) {
-                    if (type != down_only)
-                        offset.x += collision.width * (collision_center.x > center.x ? -1.0f : 1.0f);
-                }
-                else {
-                    if (type == down_only)
-                        offset.y += (velocity_y > 0.0f ? collision.height * (collision_center.y > center.y ? -1.0f : 0.0f) : 0.0f);
-                    else
-                        offset.y += collision.height * (collision_center.y > center.y ? -1.0f : 1.0f);
+                if (collision.width != 0.0f || collision.height != 0.0f) {
+                    collided = true;
+
+                    Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
+
+                    if (collision.width < collision.height) {
+                        if (type != down_only)
+                            position.x = (collision_center.x > center.x ? tile.x - rectangle.width : tile.x + tile.width);
+                    }
+                    else {
+                        if (type == down_only)
+                            position.y = (velocity_y > 0.0f ? (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height) : position.y);
+                        else
+                            position.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
+                    }
                 }
             }
         }
 
-    return offset;
+    return std::make_pair(position, collided);
 }
 
 void System_Tilemap::update_no_collide(const Rectangle &player_rectangle, const Rectangle &outer_rectangle) {

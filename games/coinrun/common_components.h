@@ -58,6 +58,6 @@ struct Component_Agent {
     bool face_forward = true;
 
     // Agent-specific animation
-    float rate = 0.3f;
+    float rate = 2.0f;
     float t = 0.0f;
 };
