@@ -76,13 +76,20 @@ void System_Tilemap::spawn_enemy_mob(int x, int y, std::mt19937 &rng) {
 
     std::uniform_int_distribution<int> walking_enemy_dist(0, walking_enemies.size() - 1);
 
-    Texture2D tex = manager_texture.get("assets/kenney/Enemies/" + walking_enemies[walking_enemy_dist(rng)] + ".png").texture;
+    int enemy_index = walking_enemy_dist(rng);
+
+    Component_Animation animation;
+    animation.frames.resize(2);
+    animation.frames[0] = manager_texture.get("assets/kenney/Enemies/" + walking_enemies[enemy_index] + ".png").texture;
+    animation.frames[1] = manager_texture.get("assets/kenney/Enemies/" + walking_enemies[enemy_index] + "_move.png").texture;
+    animation.rate = 0.5f;
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = tex });
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f });
     c.add_component(e, Component_Hazard{});
-    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.98f, 1.0f, 0.98f }});
+    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.48f, 1.0f, 0.98f }});
     c.add_component(e, Component_Mob_AI{ .velocity_x = 1.5f * ((dist01(rng) < 0.5f) * 2.0f - 1.0f) });
+    c.add_component(e, animation);
 }
 
 // Main map generation

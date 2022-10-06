@@ -2,6 +2,7 @@
 
 #include <raylib.h>
 #include <rlgl.h>
+#include <GL/gl.h>
 
 #include <cmath>
 #include <iostream>
@@ -10,7 +11,7 @@
 #include "common_systems.h"
 
 const int version = 100;
-const bool show_log = true;
+const bool show_log = false;
 
 // ---------------------- CEnv Interface ----------------------
 
@@ -34,6 +35,7 @@ const int screen_height = 800;
 
 std::mt19937 rng;
 Camera2D camera;
+RenderTexture2D obs_target; // Observation target
 
 float dt = 0.017f;
 
@@ -109,8 +111,7 @@ float current_background_offset_x = 0.0f;
 int current_agent_theme = 0;
 
 // Forward declarations
-void render_game();
-void copy_render_to_obs();
+void render_game(int width, int height); // Render to current framebuffer or render target
 void reset();
 
 void handle_log_do_nothing(int logLevel, const char *text, va_list args) {
@@ -199,13 +200,15 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     SetTargetFPS(0); // Uncapped
 
+    // Create main render texture
+    obs_target = LoadRenderTexture(obs_width, obs_height);
+
     // Seed RNG
     rng.seed(seed);
 
     // Initialize camera
     camera = { 0 };
     camera.zoom = 1.0f;
-    camera.offset = (Vector2){ screen_width * 0.5f, screen_height * 0.5f };
 
     // Register components
     c.register_component<Component_Transform>();
@@ -283,32 +286,23 @@ int32_t cenv_reset(int32_t seed, cenv_option* options, int32_t options_size) {
 
     reset();
 
-    render_game();
-
-    copy_render_to_obs();
+    BeginTextureMode(obs_target);
+        render_game(obs_width, obs_height);
+    EndTextureMode();
+    rlEnableFramebuffer(obs_target.id);
+    glReadPixels(0, 0, obs_width, obs_height, GL_RGB, GL_UNSIGNED_BYTE, observation.value_buffer.b);
+    rlDisableFramebuffer();
 
     return 0; // No error
 }
 
 int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
-    render_game();
-
-    copy_render_to_obs();
-
-    float speed = 20.0f;
-
-    if (IsKeyDown(KEY_A))
-        camera.target.x -= speed;
-    else if (IsKeyDown(KEY_D))
-        camera.target.x += speed;
-
-    if (IsKeyDown(KEY_S))
-        camera.target.y += speed;
-    else if (IsKeyDown(KEY_W))
-        camera.target.y -= speed;
-
-    if (GetKeyPressed() == KEY_R)
-        reset();
+    BeginTextureMode(obs_target);
+        render_game(obs_width, obs_height);
+    EndTextureMode();
+    rlEnableFramebuffer(obs_target.id);
+    glReadPixels(0, 0, obs_width, obs_height, GL_RGB, GL_UNSIGNED_BYTE, observation.value_buffer.b);
+    rlDisableFramebuffer();
 
     // Update systems
     mob_ai->update(dt);
@@ -320,26 +314,17 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     step_data.terminated = !result.first || result.second;
     step_data.truncated = false;
 
+    std::cout << GetFPS() << std::endl;
+
     return 0; // No error
 }
 
 int32_t cenv_render() {
-    // Copy pixels
-    Image screen = LoadImageFromScreen();
-
-    ImageFormat(&screen, PIXELFORMAT_UNCOMPRESSED_R8G8B8);
-
-    uint8_t* pixels = (uint8_t*)screen.data;
-
-    // Reformat here if needed
-    for (int x = 0; x < screen_width; x++)
-        for (int y = 0; y < screen_height; y++) {
-            render_data.value_buffer.b[0 + 3 * (y + screen_height * x)] = pixels[0 + 3 * (y + screen_height * x)];
-            render_data.value_buffer.b[1 + 3 * (y + screen_height * x)] = pixels[1 + 3 * (y + screen_height * x)];
-            render_data.value_buffer.b[2 + 3 * (y + screen_height * x)] = pixels[2 + 3 * (y + screen_height * x)];
-        }
-
-    UnloadImage(screen);
+    // Copy render texture to screen
+    BeginDrawing();
+        render_game(screen_width, screen_height);
+        glReadPixels(0, 0, screen_width, screen_height, GL_RGB, GL_UNSIGNED_BYTE, render_data.value_buffer.b);
+    EndDrawing();
 
     return 0; // No error
 }
@@ -365,7 +350,9 @@ void cenv_close() {
     free(render_data.value_buffer.b);
     
     // ---------------------- Game ----------------------
-    
+
+    UnloadRenderTexture(obs_target);
+
     // Unload background textures
     for (int i = 0; i < background_textures.size(); i++)
         UnloadTexture(background_textures[i]);
@@ -374,57 +361,36 @@ void cenv_close() {
 }
 
 // Rendering
-void render_game() {
+void render_game(int width, int height) {
+    camera.zoom = static_cast<float>(width) / static_cast<float>(screen_width);
+    camera.offset = (Vector2){ width * 0.5f, height * 0.5f };
+    float zoom_inv = 1.0f / camera.zoom;
+
     // Render here
-    BeginDrawing();
-        BeginMode2D(camera);
+    BeginMode2D(camera);
 
-            ClearBackground(BLACK);
+        ClearBackground(BLACK);
 
-            // Draw background image
-            Texture2D background = background_textures[current_background_index];
+        // Draw background image
+        Texture2D background = background_textures[current_background_index];
 
-            float background_aspect = static_cast<float>(background.width) / static_cast<float>(background.height);
-            float extra_width = background_aspect - 1.0f; // 1 for game world aspect, which is 64x64 tiles
-            
-            DrawTextureEx(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 0.0f, 64.0f * unit_to_pixels / background.height, WHITE);
+        float background_aspect = static_cast<float>(background.width) / static_cast<float>(background.height);
+        float extra_width = background_aspect - 1.0f; // 1 for game world aspect, which is 64x64 tiles
+        
+        DrawTextureEx(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 0.0f, 64.0f * unit_to_pixels / background.height, WHITE);
 
-            Rectangle camera_aabb;
-            camera_aabb.x = (camera.target.x - camera.zoom * screen_width * 0.5f) * pixels_to_unit;
-            camera_aabb.y = (camera.target.y - camera.zoom * screen_height * 0.5f) * pixels_to_unit;
-            camera_aabb.width = screen_width * camera.zoom * pixels_to_unit;
-            camera_aabb.height = screen_height * camera.zoom * pixels_to_unit;
+        Rectangle camera_aabb;
+        camera_aabb.x = (camera.target.x - zoom_inv * width * 0.5f) * pixels_to_unit;
+        camera_aabb.y = (camera.target.y - zoom_inv * height * 0.5f) * pixels_to_unit;
+        camera_aabb.width = width * zoom_inv * pixels_to_unit;
+        camera_aabb.height = height * zoom_inv * pixels_to_unit;
 
-            sprite_render->render(camera_aabb, negative_z);
-            tilemap->render(camera_aabb, current_map_theme);
-            sprite_render->render(camera_aabb, positive_z);
-            agent->render(current_agent_theme);
+        sprite_render->render(camera_aabb, negative_z);
+        tilemap->render(camera_aabb, current_map_theme);
+        sprite_render->render(camera_aabb, positive_z);
+        agent->render(current_agent_theme);
 
-        EndMode2D();
-    EndDrawing();
-}
-
-void copy_render_to_obs() {
-    Image screen = LoadImageFromScreen();
-
-    ImageFormat(&screen, PIXELFORMAT_UNCOMPRESSED_R8G8B8);
-
-    Image obsImg = ImageCopy(screen);
-
-    ImageResize(&obsImg, obs_width, obs_height);
-
-    uint8_t* pixels = (uint8_t*)obsImg.data;
-
-    // Set observation, reformat if needed
-    for (int x = 0; x < obs_width; x++)
-        for (int y = 0; y < obs_height; y++) {
-            observation.value_buffer.b[0 + 3 * (y + obs_height * x)] = pixels[0 + 3 * (y + obs_height * x)];
-            observation.value_buffer.b[1 + 3 * (y + obs_height * x)] = pixels[1 + 3 * (y + obs_height * x)];
-            observation.value_buffer.b[2 + 3 * (y + obs_height * x)] = pixels[2 + 3 * (y + obs_height * x)];
-        }
-
-    UnloadImage(obsImg);
-    UnloadImage(screen);
+    EndMode2D();
 }
 
 void reset() {
