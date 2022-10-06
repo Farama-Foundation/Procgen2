@@ -136,7 +136,7 @@ void System_Agent::init() {
     }
 }
 
-std::pair<bool, bool> System_Agent::update(float dt, Camera2D &camera, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal) {
+std::pair<bool, bool> System_Agent::update(float dt, Camera2D &camera, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action) {
     bool alive = true;
     bool achieved_goal = false;
 
@@ -155,34 +155,38 @@ std::pair<bool, bool> System_Agent::update(float dt, Camera2D &camera, const std
     for (auto const &e : entities) {
         auto &agent = c.get_component<Component_Agent>(e);
 
-        int new_action = 0;
+        // Set action
+        agent.action = action;
 
-        if (IsKeyDown(KEY_RIGHT))
-            new_action = 0;
-        else if (IsKeyDown(KEY_LEFT))
-            new_action = 6;
-        else
-            new_action = 4;
+        // Manual control code for testing
+        //int new_action = 0;
 
-        if (new_action != 4) {
-            if (IsKeyDown(KEY_UP))
-                new_action += 2;
-            else if (IsKeyDown(KEY_DOWN))
-                new_action += 0;
-            else
-                new_action += 1;
-        }
-        else {
-            if (IsKeyDown(KEY_UP))
-                new_action = 5;
-            else if (IsKeyDown(KEY_DOWN))
-                new_action = 3;
-            else
-                new_action = 4;
-        }
+        //if (IsKeyDown(KEY_RIGHT))
+        //    new_action = 0;
+        //else if (IsKeyDown(KEY_LEFT))
+        //    new_action = 6;
+        //else
+        //    new_action = 4;
 
-        agent.action = new_action;
+        //if (new_action != 4) {
+        //    if (IsKeyDown(KEY_UP))
+        //        new_action += 2;
+        //    else if (IsKeyDown(KEY_DOWN))
+        //        new_action += 0;
+        //    else
+        //        new_action += 1;
+        //}
+        //else {
+        //    if (IsKeyDown(KEY_UP))
+        //        new_action = 5;
+        //    else if (IsKeyDown(KEY_DOWN))
+        //        new_action = 3;
+        //    else
+        //        new_action = 4;
+        //}
 
+        //agent.action = new_action;
+        
         auto &transform = c.get_component<Component_Transform>(e);
         auto &dynamics = c.get_component<Component_Dynamics>(e);
 

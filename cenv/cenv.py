@@ -199,7 +199,7 @@ class CEnv(Env):
             else:
                 space = gym.spaces.Box(arr[:len(arr) // 2], arr[len(arr) // 2:])
 
-            self.observation_space[self.c_make_data.observation_spaces[i].key] = space
+            self.observation_space[self.c_make_data.observation_spaces[i].key.decode()] = space
         
         self.action_space = {}
         
@@ -217,7 +217,7 @@ class CEnv(Env):
             else:
                 space = gym.spaces.Box(arr[:len(arr) // 2], arr[len(arr) // 2:])
 
-            self.action_space[self.c_make_data.action_spaces[i].key] = space
+            self.action_space[self.c_make_data.action_spaces[i].key.decode()] = space
 
     def step(self, action: gym.core.ActType) -> Tuple[gym.core.ObsType, float, bool, bool, dict]:
         c_actions = None
@@ -243,7 +243,7 @@ class CEnv(Env):
             c_actions = CGym_Key_Value * num_actions
 
             for k, v in action.items():
-                c_actions[i].key = k
+                c_actions[i].key = bytes(k)
                 c_actions[i].value_type = c_int32(CENV_NUMPY_DTYPE_TO_VALUE_TYPE[v.dtype])
                 c_actions[i].value_buffer_size = c_int32(len(k))
                 c_actions[i].value_buffer = byref(k.data)
@@ -266,7 +266,7 @@ class CEnv(Env):
 
             arr = _make_nd_array(c_buffer_p, (value_buffer_size,), dtype=CENV_VALUE_TYPE_TO_NUMPY_DTYPE[value_type])
 
-            observation[self.c_step_data.observations[i].key] = arr
+            observation[self.c_step_data.observations[i].key.decode()] = arr
         
         info = {}
 
@@ -277,7 +277,7 @@ class CEnv(Env):
 
             arr = _make_nd_array(c_buffer_p, (value_buffer_size,), dtype=CENV_VALUE_TYPE_TO_NUMPY_DTYPE[value_type])
 
-            info[self.c_step_data.infos[i].key] = arr
+            info[self.c_step_data.infos[i].key.decode()] = arr
 
         reward = float(self.c_step_data.reward.f)
         terminated = bool(self.c_step_data.terminated)
@@ -309,7 +309,7 @@ class CEnv(Env):
 
             arr = _make_nd_array(c_buffer_p, (value_buffer_size,), dtype=CENV_VALUE_TYPE_TO_NUMPY_DTYPE[value_type])
 
-            observation[self.c_reset_data.observations[i].key] = arr
+            observation[self.c_reset_data.observations[i].key.decode()] = arr
         
         info = {}
 
@@ -320,7 +320,7 @@ class CEnv(Env):
 
             arr = _make_nd_array(c_buffer_p, (value_buffer_size,), dtype=CENV_VALUE_TYPE_TO_NUMPY_DTYPE[value_type])
 
-            info[self.c_reset_data.infos[i].key] = arr
+            info[self.c_reset_data.infos[i].key.decode()] = arr
 
         return (observation, info)
 

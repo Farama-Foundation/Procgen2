@@ -297,6 +297,7 @@ int32_t cenv_reset(int32_t seed, cenv_option* options, int32_t options_size) {
 }
 
 int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
+    // Render and grab pixels
     BeginTextureMode(obs_target);
         render_game(obs_width, obs_height);
     EndTextureMode();
@@ -304,9 +305,23 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     glReadPixels(0, 0, obs_width, obs_height, GL_RGB, GL_UNSIGNED_BYTE, observation.value_buffer.b);
     rlDisableFramebuffer();
 
+    int action = 0;
+
+    // Parse actions
+    for (int i = 0; i < actions_size; i++) {
+        std::string key(actions[i].key);
+
+        if (key == "action") {
+            assert(actions[i].value_type == CENV_VALUE_TYPE_INT);
+            assert(actions[i].value_buffer_size == 1);
+
+            action = actions[i].value_buffer.i[0];
+        }
+    }
+
     // Update systems
     mob_ai->update(dt);
-    std::pair<bool, bool> result = agent->update(dt, camera, hazard, goal);
+    std::pair<bool, bool> result = agent->update(dt, camera, hazard, goal, action);
     sprite_render->update(dt);
 
     step_data.reward.f = result.second * 10.0f;
@@ -314,13 +329,11 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     step_data.terminated = !result.first || result.second;
     step_data.truncated = false;
 
-    std::cout << GetFPS() << std::endl;
-
     return 0; // No error
 }
 
 int32_t cenv_render() {
-    // Copy render texture to screen
+    // Render and grab pixels
     BeginDrawing();
         render_game(screen_width, screen_height);
         glReadPixels(0, 0, screen_width, screen_height, GL_RGB, GL_UNSIGNED_BYTE, render_data.value_buffer.b);

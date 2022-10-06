@@ -70,6 +70,6 @@ public:
     void init(); // Needs to load sprites
 
     // Returns alive status (false if touched hazard), and whether touched a goal (coin)
-    std::pair<bool, bool> update(float dt, Camera2D &camera, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal);
+    std::pair<bool, bool> update(float dt, Camera2D &camera, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
     void render(int theme);
 };
