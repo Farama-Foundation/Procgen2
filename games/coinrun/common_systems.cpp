@@ -305,7 +305,7 @@ void System_Agent::render(int theme) {
         // Select the correct texture
         Texture2D texture;
 
-        if (std::abs(dynamics.velocity.x) < 0.01f)
+        if (std::abs(dynamics.velocity.x) < 0.01f && agent.on_ground)
             texture = stand_textures[theme].texture;
         else if (!agent.on_ground) 
             texture = jump_textures[theme].texture;
