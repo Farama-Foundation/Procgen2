@@ -4,8 +4,6 @@
 
 #include "helpers.h"
 
-#include <iostream>
-
 void System_Sprite_Render::update(float dt) {
     if (render_entities.size() != entities.size())
         render_entities.resize(entities.size());
@@ -138,12 +136,15 @@ void System_Agent::init() {
     }
 }
 
-void System_Agent::update(float dt, Camera2D &camera) {
+std::pair<bool, bool> System_Agent::update(float dt, Camera2D &camera, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal) {
+    bool alive = true;
+    bool achieved_goal = false;
+
     // Parameters
-    const float max_jump = 8.0f;
-    const float gravity = 8.0f;
-    const float max_speed = 5.0f;
-    const float mix = 10.0f;
+    const float max_jump = 16.0f;
+    const float gravity = 14.0f;
+    const float max_speed = 6.0f;
+    const float mix = 12.0f;
     const float air_control = 0.15f;
 
     // Get tile map system
@@ -236,11 +237,45 @@ void System_Agent::update(float dt, Camera2D &camera) {
         transform.position.x = collision_data.first.x - collision.bounds.x;
         transform.position.y = collision_data.first.y - collision.bounds.y;
 
+        // Update world collision
+        world_collision.x = transform.position.x + collision.bounds.x;
+        world_collision.y = transform.position.y + collision.bounds.y;
+
         if (delta_position.x != 0.0f)
             dynamics.velocity.x = 0.0f;
         
-        if (delta_position.y != 0.0f)
+        if (agent.on_ground)
             dynamics.velocity.y = 0.0f;
+
+        // Go through all hazards
+        for (auto const &h : hazard->get_entities()) {
+            auto const &hazard_transform = c.get_component<Component_Transform>(h);
+            auto const &hazard_collision = c.get_component<Component_Collision>(h);
+
+            // World space
+            Rectangle hazard_world_collision{ hazard_transform.position.x + hazard_collision.bounds.x, hazard_transform.position.y + hazard_collision.bounds.y, hazard_collision.bounds.width, hazard_collision.bounds.height };
+
+            if (CheckCollisionRecs(world_collision, hazard_world_collision)) {
+                alive = false;
+
+                break;
+            }
+        }
+
+        // Go through all goals
+        for (auto const &g : goal->get_entities()) {
+            auto const &goal_transform = c.get_component<Component_Transform>(g);
+            auto const &goal_collision = c.get_component<Component_Collision>(g);
+
+            // World space
+            Rectangle goal_world_collision{ goal_transform.position.x + goal_collision.bounds.x, goal_transform.position.y + goal_collision.bounds.y, goal_collision.bounds.width, goal_collision.bounds.height };
+
+            if (CheckCollisionRecs(world_collision, goal_world_collision)) {
+                achieved_goal = true;
+
+                break;
+            }
+        }
 
         // Camera follows the agent
         camera.target.x = transform.position.x * unit_to_pixels;
@@ -255,6 +290,8 @@ void System_Agent::update(float dt, Camera2D &camera) {
         else if (movement_x < 0.0f)
             agent.face_forward = false;
     }
+
+    return std::make_pair(alive, achieved_goal);
 }
 
 void System_Agent::render(int theme) {
@@ -268,7 +305,6 @@ void System_Agent::render(int theme) {
         // Select the correct texture
         Texture2D texture;
 
-        std::cout << agent.on_ground << std::endl;
         if (std::abs(dynamics.velocity.x) < 0.01f)
             texture = stand_textures[theme].texture;
         else if (!agent.on_ground) 

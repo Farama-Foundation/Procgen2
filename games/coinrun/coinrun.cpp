@@ -41,6 +41,8 @@ float dt = 0.017f;
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
 std::shared_ptr<System_Mob_AI> mob_ai;
+std::shared_ptr<System_Hazard> hazard;
+std::shared_ptr<System_Goal> goal;
 std::shared_ptr<System_Agent> agent;
 
 System_Tilemap::Config tilemap_config;
@@ -205,8 +207,6 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     camera.zoom = 1.0f;
     camera.offset = (Vector2){ screen_width * 0.5f, screen_height * 0.5f };
 
-    std::cout << "Registering components..." << std::endl;
-
     // Register components
     c.register_component<Component_Transform>();
     c.register_component<Component_Collision>();
@@ -237,6 +237,18 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only to mobs
     c.set_system_signature<System_Mob_AI>(mob_ai_signature);
 
+    // Hazard system setup
+    hazard = c.register_system<System_Hazard>();
+    Signature hazard_signature;
+    hazard_signature.set(c.get_component_type<Component_Hazard>()); // Operate only to hazards
+    c.set_system_signature<System_Hazard>(hazard_signature);
+
+    // Goal system setup
+    goal = c.register_system<System_Goal>();
+    Signature goal_signature;
+    goal_signature.set(c.get_component_type<Component_Goal>()); // Operate only to goals
+    c.set_system_signature<System_Goal>(goal_signature);
+
     // Agent system setup
     agent = c.register_system<System_Agent>();
     Signature agent_signature;
@@ -258,6 +270,17 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 }
 
 int32_t cenv_reset(int32_t seed, cenv_option* options, int32_t options_size) {
+    // Parse options
+    for (int i = 0; i < options_size; i++) {
+        std::string name(options[i].name);
+
+        if (name == "seed") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+
+            rng.seed(options[i].value.i);
+        }
+    }
+
     reset();
 
     render_game();
@@ -289,13 +312,13 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
 
     // Update systems
     mob_ai->update(dt);
-    agent->update(dt, camera);
+    std::pair<bool, bool> result = agent->update(dt, camera, hazard, goal);
     sprite_render->update(dt);
 
-    // Set observation from last render
-    step_data.reward.f = 0.0f;
+    step_data.reward.f = result.second * 10.0f;
 
-    step_data.terminated = false;
+    step_data.terminated = !result.first || result.second;
+    step_data.truncated = false;
 
     return 0; // No error
 }

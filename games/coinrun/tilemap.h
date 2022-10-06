@@ -89,7 +89,7 @@ public:
     void render(const Rectangle &camera_aabb, int theme);
 
     // General collision detection, returns new rectangle position and a collision flag
-    std::pair<Vector2, bool> get_collision(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y = 0.0f);
+    std::pair<Vector2, bool> get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y = 0.0f);
 
     // For fall-through platforms
     void update_no_collide(const Rectangle &player_rectangle, const Rectangle &outer_rectangle);

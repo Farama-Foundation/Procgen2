@@ -34,6 +34,26 @@ public:
     void update(float dt);
 };
 
+// -------------------- Hazards --------------------
+
+// Empty mostly, since just need it to collect hazards for agent system
+class System_Hazard : public System {
+public:
+    std::unordered_set<Entity> &get_entities() {
+        return entities;
+    }
+};
+
+// -------------------- Goals --------------------
+
+// Empty mostly, since just need it to collect goals for agent system
+class System_Goal : public System {
+public:
+    std::unordered_set<Entity> &get_entities() {
+        return entities;
+    }
+};
+
 // --------------------- Player --------------------
 
 static const std::vector<std::string> agent_themes = { "Beige", "Blue", "Green", "Pink", "Yellow" };
@@ -49,6 +69,7 @@ private:
 public:
     void init(); // Needs to load sprites
 
-    void update(float dt, Camera2D &camera);
+    // Returns alive status (false if touched hazard), and whether touched a goal (coin)
+    std::pair<bool, bool> update(float dt, Camera2D &camera, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal);
     void render(int theme);
 };

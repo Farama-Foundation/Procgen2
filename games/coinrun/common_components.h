@@ -44,7 +44,6 @@ struct Component_Animation { // Requires a Component_Sprite as well in order to 
 
 // Reset-triggering
 struct Component_Hazard {};
-
 struct Component_Goal {};
 
 // Game logic

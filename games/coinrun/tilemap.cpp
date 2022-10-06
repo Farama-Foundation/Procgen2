@@ -1,5 +1,4 @@
 #include "tilemap.h"
-#include <iostream>
 
 void System_Tilemap::init() {
     id_to_textures.resize(num_ids);
@@ -32,6 +31,9 @@ void System_Tilemap::init() {
 
     manager_texture.get("assets/kenney/Enemies/sawHalf.png");
     manager_texture.get("assets/kenney/Enemies/sawHalf_move.png");
+
+    // Pre-load coin
+    manager_texture.get("assets/kenney/Items/coinGold.png");
 }
 
 // Tile manipulation
@@ -61,6 +63,7 @@ void System_Tilemap::spawn_enemy_saw(int x, int y) {
     c.add_component(e, Component_Transform{ .position{ pos } });
     c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f });
     c.add_component(e, Component_Hazard{});
+    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
     c.add_component(e, animation);
 }
 
@@ -267,6 +270,16 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
         curr_x += dx;
     }
 
+    // Spawn the coin
+    Entity coin = c.create_entity();
+
+    Vector2 pos = { static_cast<float>(curr_x) + 0.5f, static_cast<float>(map_height - 1 - curr_y) + 0.5f };
+
+    c.add_component(coin, Component_Transform{ .position{ pos } });
+    c.add_component(coin, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = manager_texture.get("assets/kenney/Items/coinGold.png").texture });
+    c.add_component(coin, Component_Goal{});
+    c.add_component(coin, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+
     set_area_with_top(curr_x, 0, 1, curr_y, wall_mid, wall_top);
 
     set_area(curr_x + 1, 0, main_width - curr_x, main_height, wall_mid);
@@ -278,10 +291,6 @@ void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
     int upper_x = std::ceil(camera_aabb.x + camera_aabb.width);
     int upper_y = std::ceil(camera_aabb.y + camera_aabb.height);
     
-    // Temporary rng with constant seed to render visual-only randomness
-    std::mt19937 render_rng(0);
-
-
     for (int y = lower_y; y <= upper_y; y++)
         for (int x = lower_x; x <= upper_x; x++) {
             Tile_ID id = get(x, map_height - 1 - y);
@@ -302,8 +311,7 @@ void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
         }
 }
 
-std::pair<Vector2, bool> System_Tilemap::get_collision(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y) {
-    Vector2 position{ rectangle.x, rectangle.y };
+std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y) {
     bool collided = false;
 
     int lower_x = std::floor(rectangle.x);
@@ -317,6 +325,9 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(const Rectangle &rectangl
     tile.width = 1.0f;
     tile.height = 1.0f;
     
+    // Need two passes to avoid "snagging" on tiles when sliding along a wall
+
+    // Pass 1 (horizontal)
     for (int y = lower_y; y <= upper_y; y++)
         for (int x = lower_x; x <= upper_x; x++) {
             Tile_ID id = get(x, map_height - 1 - y);
@@ -334,21 +345,41 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(const Rectangle &rectangl
 
                     Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
 
-                    if (collision.width < collision.height) {
+                    if (collision.width <= collision.height) {
                         if (type != down_only)
-                            position.x = (collision_center.x > center.x ? tile.x - rectangle.width : tile.x + tile.width);
-                    }
-                    else {
-                        if (type == down_only)
-                            position.y = (velocity_y > 0.0f ? (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height) : position.y);
-                        else
-                            position.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
+                            rectangle.x = (collision_center.x > center.x ? tile.x - rectangle.width : tile.x + tile.width);
                     }
                 }
             }
         }
 
-    return std::make_pair(position, collided);
+    // Pass 2 (vertical)
+    for (int y = lower_y; y <= upper_y; y++)
+        for (int x = lower_x; x <= upper_x; x++) {
+            Tile_ID id = get(x, map_height - 1 - y);
+
+            Collision_Type type = collision_id_func(id);
+
+            if (type != none && !no_collide_mask[(map_height - 1 - y) + x * map_height]) {
+                tile.x = x;
+                tile.y = y;
+
+                Rectangle collision = GetCollisionRec(rectangle, tile);
+
+                if (collision.width != 0.0f || collision.height != 0.0f) {
+                    Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
+
+                    if (collision.width > collision.height) {
+                        if (type == down_only)
+                            rectangle.y = (velocity_y > 0.0f ? (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height) : rectangle.y);
+                        else
+                            rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
+                    }
+                }
+            }
+        }
+
+    return std::make_pair(Vector2{ rectangle.x, rectangle.y }, collided);
 }
 
 void System_Tilemap::update_no_collide(const Rectangle &player_rectangle, const Rectangle &outer_rectangle) {
