@@ -26,6 +26,7 @@ struct Component_Sprite {
     Vector2 position{ 0.0f, 0.0f };
     float rotation = 0.0f;
     float scale = 1.0f;
+    bool flip_x = false;
 
     Color tint{ 255, 255, 255, 255 };
     float z = 0.0f; // Ordering

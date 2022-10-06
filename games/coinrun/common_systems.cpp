@@ -69,8 +69,16 @@ void System_Sprite_Render::render(const Rectangle &camera_aabb, Sprite_Render_Mo
         aabb = rotated_scaled_AABB(aabb, rotation, scale);
 
         // If visible
-        if (CheckCollisionRecs(aabb, camera_aabb))
-            DrawTextureEx(sprite.texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, rotation, scale * unit_to_pixels / sprite.texture.width, sprite.tint);
+        if (CheckCollisionRecs(aabb, camera_aabb)) {
+            if (sprite.flip_x) {
+                Rectangle source{ static_cast<float>(sprite.texture.width), 0.0f, -static_cast<float>(sprite.texture.width), static_cast<float>(sprite.texture.height) };
+                Rectangle dest{ position.x * unit_to_pixels, position.y * unit_to_pixels, scale * unit_to_pixels / sprite.texture.width, scale * unit_to_pixels / sprite.texture.width };
+
+                DrawTexturePro(sprite.texture, source, dest, (Vector2){ 0.0f, 0.0f }, rotation, sprite.tint);
+            }
+            else
+                DrawTextureEx(sprite.texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, rotation, scale * unit_to_pixels / sprite.texture.width, sprite.tint);
+        }
     }
 }
 
@@ -86,9 +94,9 @@ void System_Mob_AI::update(float dt) {
         // Move
         transform.position.x += mob_ai.velocity_x * dt;
 
-        Rectangle wall_sensor{ transform.position.x + 0.5f, transform.position.y - 1.1f, 1.0f, 0.5f };
-        Rectangle floor_sensor_left{ transform.position.x - 0.5f, transform.position.y + 0.1f, 1.0f, 0.8f };
-        Rectangle floor_sensor_right{ transform.position.x + 1.5f, transform.position.y + 0.1f, 1.0f, 0.8f };
+        Rectangle wall_sensor{ transform.position.x - 0.5f, transform.position.y - 1.1f, 1.0f, 0.5f };
+        Rectangle floor_sensor_left{ transform.position.x - 1.5f, transform.position.y + 0.1f, 1.0f, 0.8f };
+        Rectangle floor_sensor_right{ transform.position.x + 0.5f, transform.position.y + 0.1f, 1.0f, 0.8f };
 
         std::pair<Vector2, bool> wall_collision_data = tilemap->get_collision(wall_sensor, [](Tile_ID id) -> Collision_Type {
             return (id == wall_mid || id == wall_top ? full : none);
@@ -102,12 +110,12 @@ void System_Mob_AI::update(float dt) {
             return (id == empty ? full : none);
         });
 
-        float new_x = wall_collision_data.first.x;
+        float new_x = wall_collision_data.first.x + 0.5f;
 
         if (left_floor_collision_data.second)
-            new_x = left_floor_collision_data.first.x;
+            new_x = left_floor_collision_data.first.x + 1.5f;
         else if (right_floor_collision_data.second)
-            new_x = right_floor_collision_data.first.x;
+            new_x = right_floor_collision_data.first.x - 0.5f;
 
         float delta_x = new_x - transform.position.x;
 
@@ -115,6 +123,11 @@ void System_Mob_AI::update(float dt) {
 
         if ((delta_x > 0.0f) != (mob_ai.velocity_x > 0.0f))
             mob_ai.velocity_x *= -1.0f; // Rebound
+
+        // Flip sprite if needed
+        auto &sprite = c.get_component<Component_Sprite>(e);
+
+        sprite.flip_x = mob_ai.velocity_x < 0.0f;
     }
 }
 
@@ -219,12 +232,12 @@ void System_Agent::update(float dt, Camera2D &camera) {
         }, dynamics.velocity.y);
 
         // Update no collide mask (for fallthrough platform logic) given some large bounds to check around the agent
-        tilemap->update_no_collide(world_collision, Rectangle{ transform.position.x - 8.0f, transform.position.y - 8.0f, 16.0f, 16.0f });
+        tilemap->update_no_collide(world_collision, Rectangle{ transform.position.x - 4.0f, transform.position.y - 4.0f, 8.0f, 8.0f });
 
         // If was moved up, on ground
         Vector2 delta_position{ collision_data.first.x - world_collision.x, collision_data.first.y - world_collision.y };
 
-        agent.on_ground = delta_position.y <= 0.0f && collision_data.second;
+        agent.on_ground = delta_position.y < 0.0f && collision_data.second;
 
         // Correct position
         transform.position.x = collision_data.first.x - collision.bounds.x;
