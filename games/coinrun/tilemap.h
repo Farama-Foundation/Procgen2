@@ -8,6 +8,7 @@
 #include <cmath>
 #include <algorithm>
 #include <random>
+#include <functional>
 
 #include <raylib.h>
 
@@ -19,6 +20,12 @@ enum Tile_ID {
     lava_mid,
     crate,
     num_ids
+};
+
+enum Collision_Type {
+    none = 0,
+    full,
+    down_only
 };
 
 static const std::vector<std::string> wall_themes = { "Dirt", "Grass", "Planet", "Sand", "Snow", "Stone" };
@@ -46,6 +53,7 @@ private:
     std::vector<std::vector<Asset_Texture>> id_to_textures;
 
     std::vector<Tile_ID> tile_ids;
+    std::vector<bool> no_collide_mask; // For fallthrough tiles like crates
 
     void spawn_enemy_saw(int x, int y);
     void spawn_enemy_mob(int x, int y, std::mt19937 &rng);
@@ -57,6 +65,7 @@ public:
     // Generate a new random map
     void regenerate(std::mt19937 &rng, const Config &cfg);
 
+    // Set a tile
     void set(int x, int y, Tile_ID id) {
         if (x < 0 || y < 0 || x >= map_width || y >= map_height)
             return;
@@ -64,10 +73,11 @@ public:
         tile_ids[y + x * map_height] = id;
     }
 
-    // top left corner x y, size, id to fill
+    // Top left corner x y, size, id to fill
     void set_area(int x, int y, int width, int height, Tile_ID id);
     void set_area_with_top(int x, int y, int width, int height, Tile_ID mid_id, Tile_ID top_id);
 
+    // Get a tile
     Tile_ID get(int x, int y) {
         if (x < 0 || y < 0 || x >= map_width || y >= map_height)
             return wall_mid; // Out of bounds is a wall
@@ -76,4 +86,17 @@ public:
     }
 
     void render(const Rectangle &camera_aabb, int theme);
+
+    // General collision detection
+    Vector2 get_collision_offset(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func);
+
+    // For fall-through platforms
+    void update_no_collide(const Rectangle &player_rectangle, const Rectangle &outer_rectangle);
+
+    void set_no_collide(int x, int y) {
+        if (x < 0 || y < 0 || x >= map_width || y >= map_height)
+            return;
+
+        no_collide_mask[y + x * map_height] = true;
+    }
 };

@@ -17,7 +17,6 @@ struct Component_Collision {
 };
 
 struct Component_Dynamics {
-    Vector2 acceleration{ 0.0f, 0.0f };
     Vector2 velocity{ 0.0f, 0.0f };
 };
 
@@ -34,7 +33,7 @@ struct Component_Sprite {
     Texture2D texture;
 };
 
-struct Component_Animation {
+struct Component_Animation { // Requires a Component_Sprite as well in order to function
     std::vector<Texture2D> frames;
 
     int frame_index = 0;
@@ -48,6 +47,15 @@ struct Component_Hazard {};
 struct Component_Goal {};
 
 // Game logic
-struct Component_Sweeper {
-    float velocity_x = 0.15f;
+struct Component_Mob_AI {
+    float velocity_x = 1.5f;
+};
+
+struct Component_Agent {
+    int action = 0;
+    bool on_ground = false;
+
+    // Agent-specific animation
+    float rate = 0.3f;
+    float t = 0.0f;
 };

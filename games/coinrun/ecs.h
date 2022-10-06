@@ -225,6 +225,16 @@ public:
         signatures[id] = s;
     }
 
+    template<typename T>
+    std::shared_ptr<T> get_system() {
+        size_t id = typeid(T).hash_code();
+
+        // Make sure exists
+        assert(systems.find(id) != systems.end());
+
+        return std::static_pointer_cast<T>(systems[id]);
+    }
+
     void entity_destroyed(Entity e);
 
     void entity_signature_changed(Entity e, Signature s);

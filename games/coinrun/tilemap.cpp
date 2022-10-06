@@ -78,7 +78,8 @@ void System_Tilemap::spawn_enemy_mob(int x, int y, std::mt19937 &rng) {
     c.add_component(e, Component_Transform{ .position{ pos } });
     c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = tex });
     c.add_component(e, Component_Hazard{});
-    c.add_component(e, Component_Sweeper{ .velocity_x = 0.15f * ((dist01(rng) < 0.5f) * 2.0f - 1.0f) });
+    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -1.0f, 1.0f, 1.0f }});
+    c.add_component(e, Component_Mob_AI{ .velocity_x = 1.5f * ((dist01(rng) < 0.5f) * 2.0f - 1.0f) });
 }
 
 // Main map generation
@@ -93,6 +94,8 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     this->map_height = main_height;
 
     tile_ids.resize(map_width * map_height);
+    no_collide_mask.clear();
+    no_collide_mask.assign(tile_ids.size(), false);
 
     // Clear
     std::fill(tile_ids.begin(), tile_ids.end(), empty);
@@ -293,5 +296,73 @@ void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
                 tex = id_to_textures[id][crate_dist(render_rng)].texture;
 
             DrawTextureEx(tex, (Vector2){ x * unit_to_pixels, y * unit_to_pixels }, 0.0f, unit_to_pixels / tex.width, WHITE);
+        }
+}
+
+Vector2 System_Tilemap::get_collision_offset(const Rectangle &rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func) {
+    Vector2 offset{ 0 };
+
+    int lower_x = std::floor(rectangle.x);
+    int lower_y = std::floor(rectangle.y);
+    int upper_x = std::ceil(rectangle.x + rectangle.width);
+    int upper_y = std::ceil(rectangle.y + rectangle.height);
+
+    Vector2 center{ rectangle.x + rectangle.width * 0.5f, rectangle.y + rectangle.height * 0.5f };
+
+    Rectangle tile;
+    tile.width = 1.0f;
+    tile.height = 1.0f;
+    
+    for (int y = lower_y; y <= upper_y; y++)
+        for (int x = lower_x; x <= upper_x; x++) {
+            Tile_ID id = get(x, map_height - 1 - y);
+
+            Collision_Type type = collision_id_func(id);
+
+            if (type != none && !no_collide_mask[y + x * map_height]) {
+                tile.x = x;
+                tile.y = y;
+
+                Rectangle collision = GetCollisionRec(rectangle, tile);
+                Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
+
+                if (collision.width < collision.height)
+                    offset.x += collision.width * (collision_center.x > center.x ? -1.0f : 1.0f);
+                else {
+                    if (type == down_only)
+                        offset.y += collision.height * (collision_center.y > center.y ? -1.0f : 0.0f);
+                    else
+                        offset.y += collision.height * (collision_center.y > center.y ? -1.0f : 1.0f);
+                }
+            }
+        }
+
+    return offset;
+}
+
+void System_Tilemap::update_no_collide(const Rectangle &player_rectangle, const Rectangle &outer_rectangle) {
+    // Only check "real" tiles (not out of bounds) by clamping to 0, width/height range
+    int lower_x = std::max(0, static_cast<int>(std::floor(outer_rectangle.x)));
+    int lower_y = std::max(0, static_cast<int>(std::floor(outer_rectangle.y)));
+    int upper_x = std::min(map_width - 1, static_cast<int>(std::ceil(outer_rectangle.x + outer_rectangle.width)));
+    int upper_y = std::min(map_height - 1, static_cast<int>(std::ceil(outer_rectangle.y + outer_rectangle.height)));
+
+    Rectangle tile;
+    tile.width = 1.0f;
+    tile.height = 1.0f;
+    
+    for (int y = lower_y; y <= upper_y; y++)
+        for (int x = lower_x; x <= upper_x; x++) {
+            Tile_ID id = get(x, map_height - 1 - y);
+
+            int index = y + x * map_height;
+
+            if (id == crate) {
+                tile.x = x;
+                tile.y = y;
+
+                if (!CheckCollisionRecs(player_rectangle, tile))
+                    no_collide_mask[index] = false;
+            }
         }
 }

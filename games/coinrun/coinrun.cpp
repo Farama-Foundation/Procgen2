@@ -40,8 +40,67 @@ float dt = 0.017f;
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
+std::shared_ptr<System_Mob_AI> mob_ai;
 
 System_Tilemap::Config tilemap_config;
+
+// Big list of different background images
+std::vector<std::string> background_names {
+    "assets/platform_backgrounds/alien_bg.png",
+    "assets/platform_backgrounds/another_world_bg.png",
+    "assets/platform_backgrounds/back_cave.png",
+    "assets/platform_backgrounds/caverns.png",
+    "assets/platform_backgrounds/cyberpunk_bg.png",
+    "assets/platform_backgrounds/parallax_forest.png",
+    "assets/platform_backgrounds/scifi_bg.png",
+    "assets/platform_backgrounds/scifi2_bg.png",
+    "assets/platform_backgrounds/living_tissue_bg.png",
+    "assets/platform_backgrounds/airadventurelevel1.png",
+    "assets/platform_backgrounds/airadventurelevel2.png",
+    "assets/platform_backgrounds/airadventurelevel3.png",
+    "assets/platform_backgrounds/airadventurelevel4.png",
+    "assets/platform_backgrounds/cave_background.png",
+    "assets/platform_backgrounds/blue_desert.png",
+    "assets/platform_backgrounds/blue_grass.png",
+    "assets/platform_backgrounds/blue_land.png",
+    "assets/platform_backgrounds/blue_shroom.png",
+    "assets/platform_backgrounds/colored_desert.png",
+    "assets/platform_backgrounds/colored_grass.png",
+    "assets/platform_backgrounds/colored_land.png",
+    "assets/platform_backgrounds/colored_shroom.png",
+    "assets/platform_backgrounds/landscape1.png",
+    "assets/platform_backgrounds/landscape2.png",
+    "assets/platform_backgrounds/landscape3.png",
+    "assets/platform_backgrounds/landscape4.png",
+    "assets/platform_backgrounds/battleback1.png",
+    "assets/platform_backgrounds/battleback2.png",
+    "assets/platform_backgrounds/battleback3.png",
+    "assets/platform_backgrounds/battleback4.png",
+    "assets/platform_backgrounds/battleback5.png",
+    "assets/platform_backgrounds/battleback6.png",
+    "assets/platform_backgrounds/battleback7.png",
+    "assets/platform_backgrounds/battleback8.png",
+    "assets/platform_backgrounds/battleback9.png",
+    "assets/platform_backgrounds/battleback10.png",
+    "assets/platform_backgrounds/sunrise.png",
+    "assets/platform_backgrounds_2/beach1.png",
+    "assets/platform_backgrounds_2/beach2.png",
+    "assets/platform_backgrounds_2/beach3.png",
+    "assets/platform_backgrounds_2/beach4.png",
+    "assets/platform_backgrounds_2/fantasy1.png",
+    "assets/platform_backgrounds_2/fantasy2.png",
+    "assets/platform_backgrounds_2/fantasy3.png",
+    "assets/platform_backgrounds_2/fantasy4.png",
+    "assets/platform_backgrounds_2/candy1.png",
+    "assets/platform_backgrounds_2/candy2.png",
+    "assets/platform_backgrounds_2/candy3.png",
+    "assets/platform_backgrounds_2/candy4.png"
+};
+
+std::vector<Texture2D> background_textures;
+
+int current_background_index = 0;
+float current_background_offset_x = 0.0f;
 
 // Forward declarations
 void render_game();
@@ -152,12 +211,13 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Animation>();
     c.register_component<Component_Hazard>();
     c.register_component<Component_Goal>();
-    c.register_component<Component_Sweeper>();
+    c.register_component<Component_Mob_AI>();
+    c.register_component<Component_Agent>(); // Player
 
     // Sprite rendering system
     sprite_render = c.register_system<System_Sprite_Render>();
     Signature sprite_render_signature;
-    sprite_render_signature.set(c.get_component_type<Component_Sprite>());
+    sprite_render_signature.set(c.get_component_type<Component_Sprite>()); // Operate only on sprites
     c.set_system_signature<System_Sprite_Render>(sprite_render_signature);
 
     // Tile map setup
@@ -166,7 +226,21 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.set_system_signature<System_Tilemap>(tilemap_signature);
 
     tilemap->init();
-    tilemap->regenerate(rng, tilemap_config);
+
+    // Mob AI setup
+    mob_ai = c.register_system<System_Mob_AI>();
+    Signature mob_ai_signature;
+    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only to mobs
+    c.set_system_signature<System_Mob_AI>(mob_ai_signature);
+
+    // Load backgrounds
+    background_textures.resize(background_names.size());
+
+    for (int i = 0; i < background_names.size(); i++)
+        background_textures[i] = LoadTexture(background_names[i].c_str());
+
+    // Reset spawns entities while generating map
+    reset();
 
     return 0; // No error
 }
@@ -200,6 +274,10 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
 
     if (GetKeyPressed() == KEY_R)
         reset();
+
+    // Update systems
+    mob_ai->update(dt);
+    sprite_render->update(dt);
 
     // Set observation from last render
     step_data.reward.f = 0.0f;
@@ -252,18 +330,28 @@ void cenv_close() {
     
     // ---------------------- Game ----------------------
     
+    // Unload background textures
+    for (int i = 0; i < background_textures.size(); i++)
+        UnloadTexture(background_textures[i]);
+
     CloseWindow();
 }
 
 // Rendering
 void render_game() {
-    sprite_render->update(dt);
-
     // Render here
     BeginDrawing();
         BeginMode2D(camera);
 
             ClearBackground(BLACK);
+
+            // Draw background image
+            Texture2D background = background_textures[current_background_index];
+
+            float background_aspect = static_cast<float>(background.width) / static_cast<float>(background.height);
+            float extra_width = background_aspect - 1.0f; // 1 for game world aspect, which is 64x64 tiles
+            
+            DrawTextureEx(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 0.0f, 64.0f * unit_to_pixels / background.height, WHITE);
 
             Rectangle camera_aabb;
             camera_aabb.x = (camera.target.x - camera.zoom * screen_width * 0.5f) * pixels_to_unit;
@@ -306,4 +394,15 @@ void reset() {
     c.destroy_all_entities();
 
     tilemap->regenerate(rng, tilemap_config);
+
+    std::uniform_int_distribution<int> background_dist(0, background_textures.size() - 1);
+
+    current_background_index = background_dist(rng);
+
+    std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
+    current_background_offset_x = dist01(rng);
+
+    // Spawn the player (agent)
+
 }
