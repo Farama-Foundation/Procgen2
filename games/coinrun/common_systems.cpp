@@ -23,7 +23,7 @@ void System_Sprite_Render::update(float dt) {
             animation.t += dt;
 
             int frames_advance = animation.t / animation.rate;
-            animation.t -= frames_advance; 
+            animation.t -= frames_advance * animation.rate; 
                 
             animation.frame_index = (animation.frame_index + frames_advance) % animation.frames.size();
 
@@ -94,40 +94,33 @@ void System_Mob_AI::update(float dt) {
         // Move
         transform.position.x += mob_ai.velocity_x * dt;
 
-        Rectangle wall_sensor{ transform.position.x - 0.5f, transform.position.y - 1.1f, 1.0f, 0.5f };
-        Rectangle floor_sensor_left{ transform.position.x - 1.5f, transform.position.y + 0.1f, 1.0f, 0.8f };
-        Rectangle floor_sensor_right{ transform.position.x + 0.5f, transform.position.y + 0.1f, 1.0f, 0.8f };
+        Rectangle wall_sensor{ transform.position.x - 0.5f, transform.position.y - 0.6f, 1.0f, 0.5f };
+        Rectangle floor_sensor{ transform.position.x - 0.5f, transform.position.y + 0.6f, 1.0f, 0.5f };
 
         std::pair<Vector2, bool> wall_collision_data = tilemap->get_collision(wall_sensor, [](Tile_ID id) -> Collision_Type {
             return (id == wall_mid || id == wall_top ? full : none);
         });
 
-        std::pair<Vector2, bool> left_floor_collision_data = tilemap->get_collision(floor_sensor_left, [](Tile_ID id) -> Collision_Type {
-            return (id == empty ? full : none);
-        });
-
-        std::pair<Vector2, bool> right_floor_collision_data = tilemap->get_collision(floor_sensor_right, [](Tile_ID id) -> Collision_Type {
+        std::pair<Vector2, bool> floor_collision_data = tilemap->get_collision(floor_sensor, [](Tile_ID id) -> Collision_Type {
             return (id == empty ? full : none);
         });
 
         float new_x = wall_collision_data.first.x + 0.5f;
 
-        if (left_floor_collision_data.second)
-            new_x = left_floor_collision_data.first.x + 1.5f;
-        else if (right_floor_collision_data.second)
-            new_x = right_floor_collision_data.first.x - 0.5f;
+        if (floor_collision_data.second)
+            new_x = floor_collision_data.first.x + 0.5f;
 
         float delta_x = new_x - transform.position.x;
 
         transform.position.x = new_x;
 
-        if ((delta_x > 0.0f) != (mob_ai.velocity_x > 0.0f))
+        if (wall_collision_data.second || floor_collision_data.second)
             mob_ai.velocity_x *= -1.0f; // Rebound
 
         // Flip sprite if needed
         auto &sprite = c.get_component<Component_Sprite>(e);
 
-        sprite.flip_x = mob_ai.velocity_x < 0.0f;
+        sprite.flip_x = mob_ai.velocity_x > 0.0f;
     }
 }
 
@@ -148,8 +141,8 @@ void System_Agent::init() {
 void System_Agent::update(float dt, Camera2D &camera) {
     // Parameters
     const float max_jump = 8.0f;
-    const float gravity = 5.0f;
-    const float max_speed = 4.0f;
+    const float gravity = 8.0f;
+    const float max_speed = 5.0f;
     const float mix = 10.0f;
     const float air_control = 0.15f;
 
