@@ -169,6 +169,10 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
         if (jump && agent.on_ground)
             dynamics.velocity.y = -max_jump;
         else if (fallthrough) {
+            // Set currently occupied tiles to not collide
+            tilemap->set_no_collide(transform.position.x, tilemap->get_height() - 1 - static_cast<int>(transform.position.y - 0.99f));
+            tilemap->set_no_collide(transform.position.x, tilemap->get_height() - 1 - static_cast<int>(transform.position.y - 0.5f));
+
             // Set 1-2 tiles below to not collide
             tilemap->set_no_collide(transform.position.x - 0.49f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
             tilemap->set_no_collide(transform.position.x + 0.49f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
