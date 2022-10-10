@@ -73,3 +73,16 @@ public:
     std::pair<bool, bool> update(float dt, Camera2D &camera, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
     void render(int theme);
 };
+
+// ------------------- Particles ------------------
+
+class System_Particles : public System {
+private:
+    Asset_Texture particle_texture;
+
+public:
+    void init(); // Loads sprites
+    
+    void update(float dt);
+    void render(const Rectangle &camera_aabb);
+};

@@ -46,6 +46,7 @@ std::shared_ptr<System_Mob_AI> mob_ai;
 std::shared_ptr<System_Hazard> hazard;
 std::shared_ptr<System_Goal> goal;
 std::shared_ptr<System_Agent> agent;
+std::shared_ptr<System_Particles> particles;
 
 System_Tilemap::Config tilemap_config;
 int current_map_theme = 0;
@@ -220,6 +221,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Goal>();
     c.register_component<Component_Mob_AI>();
     c.register_component<Component_Agent>(); // Player
+    c.register_component<Component_Particles>();
 
     // Sprite rendering system
     sprite_render = c.register_system<System_Sprite_Render>();
@@ -237,28 +239,36 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     // Mob AI setup
     mob_ai = c.register_system<System_Mob_AI>();
     Signature mob_ai_signature;
-    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only to mobs
+    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mobs
     c.set_system_signature<System_Mob_AI>(mob_ai_signature);
 
     // Hazard system setup
     hazard = c.register_system<System_Hazard>();
     Signature hazard_signature;
-    hazard_signature.set(c.get_component_type<Component_Hazard>()); // Operate only to hazards
+    hazard_signature.set(c.get_component_type<Component_Hazard>()); // Operate only on hazards
     c.set_system_signature<System_Hazard>(hazard_signature);
 
     // Goal system setup
     goal = c.register_system<System_Goal>();
     Signature goal_signature;
-    goal_signature.set(c.get_component_type<Component_Goal>()); // Operate only to goals
+    goal_signature.set(c.get_component_type<Component_Goal>()); // Operate only on goals
     c.set_system_signature<System_Goal>(goal_signature);
 
     // Agent system setup
     agent = c.register_system<System_Agent>();
     Signature agent_signature;
-    agent_signature.set(c.get_component_type<Component_Agent>()); // Operate only to mobs
+    agent_signature.set(c.get_component_type<Component_Agent>()); // Operate only on mobs
     c.set_system_signature<System_Agent>(agent_signature);
 
     agent->init();
+
+    // Particle system setup
+    particles = c.register_system<System_Particles>();
+    Signature particles_signature;
+    particles_signature.set(c.get_component_type<Component_Particles>()); // Operate only on particles
+    c.set_system_signature<System_Particles>(particles_signature);
+
+    particles->init();
 
     // Load backgrounds
     background_textures.resize(background_names.size());
@@ -400,6 +410,7 @@ void render_game(int width, int height) {
 
         sprite_render->render(camera_aabb, negative_z);
         tilemap->render(camera_aabb, current_map_theme);
+        particles->render(camera_aabb);
         sprite_render->render(camera_aabb, positive_z);
         agent->render(current_agent_theme);
 

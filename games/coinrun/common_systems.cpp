@@ -328,3 +328,57 @@ void System_Agent::render(int theme) {
         DrawTexturePro(texture, source, dest, (Vector2){ 0 }, 0.0f, WHITE);
     }
 }
+
+void System_Particles::init() {
+    particle_texture.load("assets/misc_assets/iconCircle_white.png");
+}
+
+void System_Particles::update(float dt) {
+    for (auto const &e : entities) {
+        auto const &transform = c.get_component<Component_Transform>(e);
+        auto &particles = c.get_component<Component_Particles>(e);
+
+        int dead_index = -1;
+    
+        for (int i = 0; i < particles.particles.size(); i++) {
+            Particle &p = particles.particles[i];
+
+            p.life -= dt;
+
+            if (p.life <= 0.0f)
+                dead_index = i;
+        }
+
+        particles.spawn_timer += dt;
+
+        // If time to spawn new particle
+        if (particles.spawn_timer >= particles.spawn_time) {
+            particles.spawn_timer = std::fmod(particles.spawn_timer, particles.spawn_time);
+
+            Particle &p = particles.particles[dead_index];
+
+            p.life = particles.lifespan;
+            p.position = transform.position;
+        }
+    }
+}
+
+void System_Particles::render(const Rectangle &camera_aabb) {
+    const float scale = 1.0f;
+    const Color color{ 255, 255, 255, 127 };
+
+    for (auto const &e : entities) {
+        auto const &transform = c.get_component<Component_Transform>(e);
+        auto const &particles = c.get_component<Component_Particles>(e);
+
+        for (int i = 0; i < particles.particles.size(); i++) {
+            const Particle &p = particles.particles[i];
+
+            if (p.life > 0.0f)
+                DrawTextureEx(particle_texture.texture,
+                        Vector2{ transform.position.x - scale * pixels_to_unit * particle_texture.texture.width, transform.position.y - scale * pixels_to_unit * particle_texture.texture.height },
+                        0.0f, scale / particle_texture.texture.width, color);
+        }
+    }
+}
+

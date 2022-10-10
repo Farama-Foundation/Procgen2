@@ -61,3 +61,16 @@ struct Component_Agent {
     float rate = 2.0f;
     float t = 0.0f;
 };
+
+struct Particle {
+    Vector2 position;
+    float life = 0.0f;
+};
+
+struct Component_Particles {
+    std::vector<Particle> particles;
+
+    float lifespan = 0.1333f;
+    float spawn_timer = 0.0f;
+    float spawn_time = 0.02f;
+};
