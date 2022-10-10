@@ -282,7 +282,7 @@ void System_Agent::render(int theme) {
 
         Vector2 position{ transform.position.x - 0.5f, transform.position.y - 2.0f };
 
-        gr.render_texture(texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, unit_to_pixels / texture->width, 1.0f, agent.face_forward);
+        gr.render_texture(texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, unit_to_pixels / texture->width, 1.0f, !agent.face_forward);
     }
 }
 
