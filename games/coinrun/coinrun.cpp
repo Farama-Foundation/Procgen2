@@ -29,6 +29,8 @@ const int num_actions = 15;
 const int window_width = 800;
 const int window_height = 800;
 
+const float game_zoom = 0.5f; // Base game zoom level
+
 std::mt19937 rng;
 
 SDL_Surface* window_target; // Main render window
@@ -431,7 +433,7 @@ void render_game(bool is_obs) {
     int width = is_obs ? obs_width : window_width;
     int height = is_obs ? obs_height : window_height;
 
-    gr.camera_scale = 1.0f;
+    gr.camera_scale = game_zoom * static_cast<float>(width) / static_cast<float>(obs_width);
     gr.camera_size = (Vector2){ static_cast<float>(width), static_cast<float>(height) };
 
     // Draw background image
