@@ -10,8 +10,6 @@
 #include <random>
 #include <functional>
 
-#include <raylib.h>
-
 enum Tile_ID {
     empty = 0,
     wall_top,
@@ -86,7 +84,7 @@ public:
         return tile_ids[y + x * map_height];
     }
 
-    void render(const Rectangle &camera_aabb, int theme);
+    void render(int theme);
 
     // General collision detection, returns new rectangle position and a collision flag
     std::pair<Vector2, bool> get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y = 0.0f);

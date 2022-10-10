@@ -1,9 +1,5 @@
 #include "../../cenv/cenv.h"
 
-#include <raylib.h>
-#include <rlgl.h>
-#include <GL/gl.h>
-
 #include <cmath>
 #include <iostream>
 
@@ -30,12 +26,18 @@ const int obs_width = 64;
 const int obs_height = 64;
 const int num_actions = 15;
 
-const int screen_width = 800;
-const int screen_height = 800;
+const int window_width = 800;
+const int window_height = 800;
 
 std::mt19937 rng;
-Camera2D camera;
-RenderTexture2D obs_target; // Observation target
+
+SDL_Surface* window_target; // Main render window
+SDL_Surface* obs_target; // Observation target
+SDL_Renderer* window_renderer;
+SDL_Renderer* obs_renderer;
+
+// Masking for SDL surfaces
+uint32_t rmask, gmask, bmask, amask;
 
 float dt = 0.017f;
 
@@ -104,7 +106,7 @@ std::vector<std::string> background_names {
     "assets/platform_backgrounds_2/candy4.png"
 };
 
-std::vector<Texture2D> background_textures;
+std::vector<Asset_Texture> background_textures;
 
 int current_background_index = 0;
 float current_background_offset_x = 0.0f;
@@ -112,12 +114,8 @@ float current_background_offset_x = 0.0f;
 int current_agent_theme = 0;
 
 // Forward declarations
-void render_game(int width, int height); // Render to current framebuffer or render target
+void render_game(bool is_obs);
 void reset();
-
-void handle_log_do_nothing(int logLevel, const char *text, va_list args) {
-    // Do nothing
-}
 
 int32_t cenv_get_env_version() {
     return version;
@@ -173,10 +171,10 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     // Frame
     render_data.value_type = CENV_VALUE_TYPE_BYTE;
-    render_data.value_buffer_height = screen_height;
-    render_data.value_buffer_width = screen_width;
+    render_data.value_buffer_height = window_height;
+    render_data.value_buffer_width = window_width;
     render_data.value_buffer_channels = 3;
-    render_data.value_buffer.b = (uint8_t*)malloc(screen_width * screen_height * 3 * sizeof(uint8_t));
+    render_data.value_buffer.b = (uint8_t*)malloc(window_width * window_height * 3 * sizeof(uint8_t));
 
     unsigned int seed = time(nullptr);
 
@@ -192,24 +190,36 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     }
 
     // ---------------------- Game ----------------------
-    
-    if (!show_log)
-        SetTraceLogCallback(&handle_log_do_nothing);
 
-    // Game
-    InitWindow(screen_width, screen_height, "CoinRun");
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+    rmask = 0xff000000;
+    gmask = 0x00ff0000;
+    bmask = 0x0000ff00;
+    amask = 0x000000ff;
+#else
+    rmask = 0x000000ff;
+    gmask = 0x0000ff00;
+    bmask = 0x00ff0000;
+    amask = 0xff000000;
+#endif
 
-    SetTargetFPS(0); // Uncapped
+    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
-    // Create main render texture
-    obs_target = LoadRenderTexture(obs_width, obs_height);
+    SDL_Init(SDL_INIT_VIDEO);
+
+    IMG_Init(IMG_INIT_PNG);
+
+    window_target = SDL_CreateRGBSurface(0, window_width, window_height, 32, rmask, gmask, bmask, amask);
+    obs_target = SDL_CreateRGBSurface(0, obs_width, obs_height, 32, rmask, gmask, bmask, amask);
+
+    window_renderer = SDL_CreateSoftwareRenderer(window_target);
+    obs_renderer = SDL_CreateSoftwareRenderer(obs_target);
+
+    gr.window_renderer = window_renderer;
+    gr.obs_renderer = obs_renderer;
 
     // Seed RNG
     rng.seed(seed);
-
-    // Initialize camera
-    camera = { 0 };
-    camera.zoom = 1.0f;
 
     // Register components
     c.register_component<Component_Transform>();
@@ -274,7 +284,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     background_textures.resize(background_names.size());
 
     for (int i = 0; i < background_names.size(); i++)
-        background_textures[i] = LoadTexture(background_names[i].c_str());
+        background_textures[i].load(background_names[i]);
 
     // Reset spawns entities while generating map
     reset();
@@ -296,24 +306,42 @@ int32_t cenv_reset(int32_t seed, cenv_option* options, int32_t options_size) {
 
     reset();
 
-    BeginTextureMode(obs_target);
-        render_game(obs_width, obs_height);
-    EndTextureMode();
-    rlEnableFramebuffer(obs_target.id);
-    glReadPixels(0, 0, obs_width, obs_height, GL_RGB, GL_UNSIGNED_BYTE, observation.value_buffer.b);
-    rlDisableFramebuffer();
+    render_game(true);
+
+    // Grab observation
+    SDL_LockSurface(obs_target);
+
+    uint8_t* pixels = (uint8_t*)obs_target->pixels;
+
+    for (int x = 0; x < obs_width; x++)
+        for (int y = 0; y < obs_height; y++) {
+            observation.value_buffer.b[0 + 3 * (y + obs_height * x)] = pixels[0 + 4 * (y + obs_height * x)];
+            observation.value_buffer.b[1 + 3 * (y + obs_height * x)] = pixels[1 + 4 * (y + obs_height * x)];
+            observation.value_buffer.b[2 + 3 * (y + obs_height * x)] = pixels[2 + 4 * (y + obs_height * x)];
+        }
+
+    SDL_UnlockSurface(obs_target);
 
     return 0; // No error
 }
 
 int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Render and grab pixels
-    BeginTextureMode(obs_target);
-        render_game(obs_width, obs_height);
-    EndTextureMode();
-    rlEnableFramebuffer(obs_target.id);
-    glReadPixels(0, 0, obs_width, obs_height, GL_RGB, GL_UNSIGNED_BYTE, observation.value_buffer.b);
-    rlDisableFramebuffer();
+    render_game(true);
+
+    // Grab observation
+    SDL_LockSurface(obs_target);
+
+    uint8_t* pixels = (uint8_t*)obs_target->pixels;
+
+    for (int x = 0; x < obs_width; x++)
+        for (int y = 0; y < obs_height; y++) {
+            observation.value_buffer.b[0 + 3 * (y + obs_height * x)] = pixels[0 + 4 * (y + obs_height * x)];
+            observation.value_buffer.b[1 + 3 * (y + obs_height * x)] = pixels[1 + 4 * (y + obs_height * x)];
+            observation.value_buffer.b[2 + 3 * (y + obs_height * x)] = pixels[2 + 4 * (y + obs_height * x)];
+        }
+
+    SDL_UnlockSurface(obs_target);
 
     int action = 0;
 
@@ -331,7 +359,7 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
 
     // Update systems
     mob_ai->update(dt);
-    std::pair<bool, bool> result = agent->update(dt, camera, hazard, goal, action);
+    std::pair<bool, bool> result = agent->update(dt, hazard, goal, action);
     sprite_render->update(dt);
 
     step_data.reward.f = result.second * 10.0f;
@@ -343,11 +371,21 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
 }
 
 int32_t cenv_render() {
-    // Render and grab pixels
-    BeginDrawing();
-        render_game(screen_width, screen_height);
-        glReadPixels(0, 0, screen_width, screen_height, GL_RGB, GL_UNSIGNED_BYTE, render_data.value_buffer.b);
-    EndDrawing();
+    render_game(false);
+
+    // Grab pixels
+    SDL_LockSurface(window_target);
+
+    uint8_t* pixels = (uint8_t*)window_target->pixels;
+
+    for (int x = 0; x < window_width; x++)
+        for (int y = 0; y < window_height; y++) {
+            render_data.value_buffer.b[0 + 3 * (y + window_height * x)] = pixels[0 + 4 * (y + window_height * x)];
+            render_data.value_buffer.b[1 + 3 * (y + window_height * x)] = pixels[1 + 4 * (y + window_height * x)];
+            render_data.value_buffer.b[2 + 3 * (y + window_height * x)] = pixels[2 + 4 * (y + window_height * x)];
+        }
+
+    SDL_UnlockSurface(window_target);
 
     return 0; // No error
 }
@@ -374,47 +412,41 @@ void cenv_close() {
     
     // ---------------------- Game ----------------------
 
-    UnloadRenderTexture(obs_target);
+    SDL_DestroyRenderer(window_renderer);
+    SDL_DestroyRenderer(obs_renderer);
 
-    // Unload background textures
-    for (int i = 0; i < background_textures.size(); i++)
-        UnloadTexture(background_textures[i]);
-
-    CloseWindow();
+    SDL_FreeSurface(window_target);
+    SDL_FreeSurface(obs_target);
 }
 
 // Rendering
-void render_game(int width, int height) {
-    camera.zoom = static_cast<float>(width) / static_cast<float>(screen_width);
-    camera.offset = (Vector2){ width * 0.5f, height * 0.5f };
-    float zoom_inv = 1.0f / camera.zoom;
+void render_game(bool is_obs) {
+    // If obs, set render to obs target
+    gr.rendering_obs = is_obs;
 
-    // Render here
-    BeginMode2D(camera);
+    SDL_SetRenderDrawColor(gr.get_renderer(), 0, 0, 0, 255);
+    SDL_RenderClear(gr.get_renderer());
+    SDL_SetRenderDrawColor(gr.get_renderer(), 255, 255, 255, 255);
 
-        ClearBackground(BLACK);
+    int width = is_obs ? obs_width : window_width;
+    int height = is_obs ? obs_height : window_height;
 
-        // Draw background image
-        Texture2D background = background_textures[current_background_index];
+    gr.camera_scale = 1.0f;
+    gr.camera_size = (Vector2){ static_cast<float>(width), static_cast<float>(height) };
 
-        float background_aspect = static_cast<float>(background.width) / static_cast<float>(background.height);
-        float extra_width = background_aspect - 1.0f; // 1 for game world aspect, which is 64x64 tiles
-        
-        DrawTextureEx(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 0.0f, 64.0f * unit_to_pixels / background.height, WHITE);
+    // Draw background image
+    Asset_Texture* background = &background_textures[current_background_index];
 
-        Rectangle camera_aabb;
-        camera_aabb.x = (camera.target.x - zoom_inv * width * 0.5f) * pixels_to_unit;
-        camera_aabb.y = (camera.target.y - zoom_inv * height * 0.5f) * pixels_to_unit;
-        camera_aabb.width = width * zoom_inv * pixels_to_unit;
-        camera_aabb.height = height * zoom_inv * pixels_to_unit;
+    float background_aspect = static_cast<float>(background->width) / static_cast<float>(background->height);
+    float extra_width = background_aspect - 1.0f; // 1 for game world aspect, which is 64x64 tiles
+    
+    gr.render_texture(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 64.0f * unit_to_pixels / background->height);
 
-        sprite_render->render(camera_aabb, negative_z);
-        tilemap->render(camera_aabb, current_map_theme);
-        particles->render(camera_aabb);
-        sprite_render->render(camera_aabb, positive_z);
-        agent->render(current_agent_theme);
-
-    EndMode2D();
+    sprite_render->render(negative_z);
+    tilemap->render(current_map_theme);
+    particles->render();
+    sprite_render->render(positive_z);
+    agent->render(current_agent_theme);
 }
 
 void reset() {

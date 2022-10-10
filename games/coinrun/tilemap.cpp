@@ -56,8 +56,8 @@ void System_Tilemap::spawn_enemy_saw(int x, int y) {
 
     Component_Animation animation;
     animation.frames.resize(2);
-    animation.frames[0] = manager_texture.get("assets/kenney/Enemies/sawHalf.png").texture;
-    animation.frames[1] = manager_texture.get("assets/kenney/Enemies/sawHalf_move.png").texture;
+    animation.frames[0] = &manager_texture.get("assets/kenney/Enemies/sawHalf.png");
+    animation.frames[1] = &manager_texture.get("assets/kenney/Enemies/sawHalf_move.png");
     animation.rate = 1.0f / 60.0f; // Every frame at 60 fps
 
     c.add_component(e, Component_Transform{ .position{ pos } });
@@ -80,8 +80,8 @@ void System_Tilemap::spawn_enemy_mob(int x, int y, std::mt19937 &rng) {
 
     Component_Animation animation;
     animation.frames.resize(2);
-    animation.frames[0] = manager_texture.get("assets/kenney/Enemies/" + walking_enemies[enemy_index] + ".png").texture;
-    animation.frames[1] = manager_texture.get("assets/kenney/Enemies/" + walking_enemies[enemy_index] + "_move.png").texture;
+    animation.frames[0] = &manager_texture.get("assets/kenney/Enemies/" + walking_enemies[enemy_index] + ".png");
+    animation.frames[1] = &manager_texture.get("assets/kenney/Enemies/" + walking_enemies[enemy_index] + "_move.png");
     animation.rate = 0.5f;
 
     c.add_component(e, Component_Transform{ .position{ pos } });
@@ -283,7 +283,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     Vector2 pos = { static_cast<float>(curr_x) + 0.5f, static_cast<float>(map_height - 1 - curr_y) + 0.5f };
 
     c.add_component(coin, Component_Transform{ .position{ pos } });
-    c.add_component(coin, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = manager_texture.get("assets/kenney/Items/coinGold.png").texture });
+    c.add_component(coin, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = &manager_texture.get("assets/kenney/Items/coinGold.png") });
     c.add_component(coin, Component_Goal{});
     c.add_component(coin, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
 
@@ -292,7 +292,10 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     set_area(curr_x + 1, 0, main_width - curr_x, main_height, wall_mid);
 }
 
-void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
+void System_Tilemap::render(int theme) {
+    Rectangle camera_aabb{ (gr.camera_position.x - gr.camera_size.x * 0.5f / gr.camera_scale) * pixels_to_unit, (gr.camera_position.y - gr.camera_size.y * 0.5f / gr.camera_scale) * pixels_to_unit,
+        gr.camera_size.x * pixels_to_unit / gr.camera_scale, gr.camera_size.y * pixels_to_unit / gr.camera_scale };
+
     int lower_x = std::floor(camera_aabb.x);
     int lower_y = std::floor(camera_aabb.y);
     int upper_x = std::ceil(camera_aabb.x + camera_aabb.width);
@@ -305,16 +308,16 @@ void System_Tilemap::render(const Rectangle &camera_aabb, int theme) {
             if (id == 0) // Empty
                 continue;
 
-            Texture2D tex;
+            Asset_Texture* tex;
 
             if (id == wall_mid || id == wall_top)
-                tex = id_to_textures[id][theme].texture;
+                tex = &id_to_textures[id][theme];
             else if (id == lava_mid || id == lava_top)
-                tex = id_to_textures[id][0].texture;
+                tex = &id_to_textures[id][0];
             else if (id == crate)
-                tex = id_to_textures[id][crate_type_indices[map_height - 1 - y + x * map_height]].texture;
+                tex = &id_to_textures[id][crate_type_indices[map_height - 1 - y + x * map_height]];
 
-            DrawTextureEx(tex, (Vector2){ x * unit_to_pixels, y * unit_to_pixels }, 0.0f, unit_to_pixels / tex.width, WHITE);
+            gr.render_texture(tex, (Vector2){ x * unit_to_pixels, y * unit_to_pixels }, unit_to_pixels / tex->width);
         }
 }
 
@@ -345,7 +348,7 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, cons
                 tile.x = x;
                 tile.y = y;
 
-                Rectangle collision = GetCollisionRec(rectangle, tile);
+                Rectangle collision = get_collision_overlap(rectangle, tile);
 
                 if (collision.width != 0.0f || collision.height != 0.0f) {
                     collided = true;
@@ -371,7 +374,7 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, cons
                 tile.x = x;
                 tile.y = y;
 
-                Rectangle collision = GetCollisionRec(rectangle, tile);
+                Rectangle collision = get_collision_overlap(rectangle, tile);
 
                 if (collision.width != 0.0f || collision.height != 0.0f) {
                     Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
@@ -410,7 +413,7 @@ void System_Tilemap::update_no_collide(const Rectangle &player_rectangle, const 
                 tile.x = x;
                 tile.y = y;
 
-                if (!CheckCollisionRecs(player_rectangle, tile))
+                if (!check_collision(player_rectangle, tile))
                     no_collide_mask[index] = false;
             }
         }

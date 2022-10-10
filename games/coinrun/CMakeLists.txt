@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
 
-include(FetchContent)
-
 project(CoinRun)
 
 set(CMAKE_C_STANDARD 11)
@@ -17,27 +15,11 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(OpenGL_GL_PREFERENCE "GLVND")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-
 ############################################################################
-# Get Raylib
+# Get SDL2
 
-set(PLATFORM "Desktop") # Set to DRM for headless
-
-FetchContent_Declare(
-    Raylib
-    GIT_REPOSITORY https://github.com/raysan5/raylib
-    GIT_TAG master
-)
-
-FetchContent_GetProperties(Raylib)
-
-if(NOT Raylib_POPULATED)
-    FetchContent_Populate(Raylib)
-    add_subdirectory(${raylib_SOURCE_DIR} ${raylib_BINARY_DIR})
-    set_target_properties(raylib PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-endif()
+find_package(SDL2 REQUIRED)
+find_package(SDL2_image REQUIRED)
 
 ############################################################################
 
@@ -50,6 +32,7 @@ set(SOURCES
     "${SOURCE_PATH}/coinrun.cpp"
     "${SOURCE_PATH}/ecs.cpp"
     "${SOURCE_PATH}/helpers.cpp"
+    "${SOURCE_PATH}/renderer.cpp"
     "${SOURCE_PATH}/common_assets.cpp"
     "${SOURCE_PATH}/common_systems.cpp"
     "${SOURCE_PATH}/tilemap.cpp"
@@ -57,7 +40,7 @@ set(SOURCES
 
 add_library(CoinRun SHARED ${SOURCES})
 
-target_link_libraries(CoinRun PRIVATE raylib)
+target_link_libraries(CoinRun SDL2::Main SDL2::Image)
 
 set_target_properties(CoinRun PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 

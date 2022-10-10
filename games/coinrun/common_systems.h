@@ -6,7 +6,6 @@
 
 #include <cmath>
 #include <algorithm>
-#include <raylib.h>
 
 // -------------------- Sprites ---------------------
 //
@@ -24,7 +23,7 @@ private:
 
 public:
     void update(float dt);
-    void render(const Rectangle &camera_aabb, Sprite_Render_Mode mode);
+    void render(Sprite_Render_Mode mode);
 };
 
 // --------------------- Mob AI --------------------
@@ -70,7 +69,7 @@ public:
     void init(); // Needs to load sprites
 
     // Returns alive status (false if touched hazard), and whether touched a goal (coin)
-    std::pair<bool, bool> update(float dt, Camera2D &camera, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
+    std::pair<bool, bool> update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
     void render(int theme);
 };
 
@@ -84,5 +83,5 @@ public:
     void init(); // Loads sprites
     
     void update(float dt);
-    void render(const Rectangle &camera_aabb);
+    void render();
 };

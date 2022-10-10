@@ -38,7 +38,7 @@ void System_Sprite_Render::update(float dt) {
     });
 }
 
-void System_Sprite_Render::render(const Rectangle &camera_aabb, Sprite_Render_Mode mode) {
+void System_Sprite_Render::render(Sprite_Render_Mode mode) {
     // Render
     for (size_t i = 0; i < render_entities.size(); i++) {
         Entity e = render_entities[i].second;
@@ -63,20 +63,11 @@ void System_Sprite_Render::render(const Rectangle &camera_aabb, Sprite_Render_Mo
         float scale = transform.scale * sprite.scale;
 
         // Find sprite AABB rectangle
-        Rectangle aabb = (Rectangle){ position.x, position.y, sprite.texture.width * pixels_to_unit, sprite.texture.height * pixels_to_unit };
+        Rectangle aabb = (Rectangle){ position.x, position.y, sprite.texture->width * pixels_to_unit, sprite.texture->height * pixels_to_unit };
         aabb = rotated_scaled_AABB(aabb, rotation, scale);
 
         // If visible
-        if (CheckCollisionRecs(aabb, camera_aabb)) {
-            if (sprite.flip_x) {
-                Rectangle source{ static_cast<float>(sprite.texture.width), 0.0f, -static_cast<float>(sprite.texture.width), static_cast<float>(sprite.texture.height) };
-                Rectangle dest{ position.x * unit_to_pixels, position.y * unit_to_pixels, scale * unit_to_pixels, scale * unit_to_pixels * static_cast<float>(sprite.texture.height) / static_cast<float>(sprite.texture.width) };
-
-                DrawTexturePro(sprite.texture, source, dest, (Vector2){ 0.0f, 0.0f }, rotation, sprite.tint);
-            }
-            else
-                DrawTextureEx(sprite.texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, rotation, scale * unit_to_pixels / sprite.texture.width, sprite.tint);
-        }
+        gr.render_texture(sprite.texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, scale * unit_to_pixels / sprite.texture->width, 1.0f, sprite.flip_x);
     }
 }
 
@@ -136,7 +127,7 @@ void System_Agent::init() {
     }
 }
 
-std::pair<bool, bool> System_Agent::update(float dt, Camera2D &camera, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action) {
+std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action) {
     bool alive = true;
     bool achieved_goal = false;
 
@@ -158,35 +149,6 @@ std::pair<bool, bool> System_Agent::update(float dt, Camera2D &camera, const std
         // Set action
         agent.action = action;
 
-        // Manual control code for testing
-        //int new_action = 0;
-
-        //if (IsKeyDown(KEY_RIGHT))
-        //    new_action = 0;
-        //else if (IsKeyDown(KEY_LEFT))
-        //    new_action = 6;
-        //else
-        //    new_action = 4;
-
-        //if (new_action != 4) {
-        //    if (IsKeyDown(KEY_UP))
-        //        new_action += 2;
-        //    else if (IsKeyDown(KEY_DOWN))
-        //        new_action += 0;
-        //    else
-        //        new_action += 1;
-        //}
-        //else {
-        //    if (IsKeyDown(KEY_UP))
-        //        new_action = 5;
-        //    else if (IsKeyDown(KEY_DOWN))
-        //        new_action = 3;
-        //    else
-        //        new_action = 4;
-        //}
-
-        //agent.action = new_action;
-        
         auto &transform = c.get_component<Component_Transform>(e);
         auto &dynamics = c.get_component<Component_Dynamics>(e);
 
@@ -259,7 +221,7 @@ std::pair<bool, bool> System_Agent::update(float dt, Camera2D &camera, const std
             // World space
             Rectangle hazard_world_collision{ hazard_transform.position.x + hazard_collision.bounds.x, hazard_transform.position.y + hazard_collision.bounds.y, hazard_collision.bounds.width, hazard_collision.bounds.height };
 
-            if (CheckCollisionRecs(world_collision, hazard_world_collision)) {
+            if (check_collision(world_collision, hazard_world_collision)) {
                 alive = false;
 
                 break;
@@ -274,7 +236,7 @@ std::pair<bool, bool> System_Agent::update(float dt, Camera2D &camera, const std
             // World space
             Rectangle goal_world_collision{ goal_transform.position.x + goal_collision.bounds.x, goal_transform.position.y + goal_collision.bounds.y, goal_collision.bounds.width, goal_collision.bounds.height };
 
-            if (CheckCollisionRecs(world_collision, goal_world_collision)) {
+            if (check_collision(world_collision, goal_world_collision)) {
                 achieved_goal = true;
 
                 break;
@@ -282,8 +244,8 @@ std::pair<bool, bool> System_Agent::update(float dt, Camera2D &camera, const std
         }
 
         // Camera follows the agent
-        camera.target.x = transform.position.x * unit_to_pixels;
-        camera.target.y = transform.position.y * unit_to_pixels;
+        gr.camera_position.x = transform.position.x * unit_to_pixels;
+        gr.camera_position.y = (transform.position.y - 0.5f) * unit_to_pixels;
 
         // Animation cycle
         agent.t += agent.rate * dt;
@@ -307,25 +269,20 @@ void System_Agent::render(int theme) {
         auto const &dynamics = c.get_component<Component_Dynamics>(e);
 
         // Select the correct texture
-        Texture2D texture;
+        Asset_Texture* texture;
 
         if (std::abs(dynamics.velocity.x) < 0.01f && agent.on_ground)
-            texture = stand_textures[theme].texture;
+            texture = &stand_textures[theme];
         else if (!agent.on_ground) 
-            texture = jump_textures[theme].texture;
+            texture = &jump_textures[theme];
         else if (agent.t > 0.5f)
-            texture = walk2_textures[theme].texture;
+            texture = &walk2_textures[theme];
         else
-            texture = walk1_textures[theme].texture;
-
-        float flip = agent.face_forward ? 1.0f : -1.0f;
+            texture = &walk1_textures[theme];
 
         Vector2 position{ transform.position.x - 0.5f, transform.position.y - 2.0f };
 
-        Rectangle source{ (agent.face_forward ? 0.0f : texture.width), 0.0f, flip * static_cast<float>(texture.width), static_cast<float>(texture.height) };
-        Rectangle dest{ position.x * unit_to_pixels, position.y * unit_to_pixels, 1.0f * unit_to_pixels, 2.0f * unit_to_pixels };
-
-        DrawTexturePro(texture, source, dest, (Vector2){ 0 }, 0.0f, WHITE);
+        gr.render_texture(texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, unit_to_pixels / texture->width, 1.0f, agent.face_forward);
     }
 }
 
@@ -363,7 +320,7 @@ void System_Particles::update(float dt) {
     }
 }
 
-void System_Particles::render(const Rectangle &camera_aabb) {
+void System_Particles::render() {
     const float scale = 1.0f;
     const Color color{ 255, 255, 255, 127 };
 
@@ -374,10 +331,6 @@ void System_Particles::render(const Rectangle &camera_aabb) {
         for (int i = 0; i < particles.particles.size(); i++) {
             const Particle &p = particles.particles[i];
 
-            if (p.life > 0.0f)
-                DrawTextureEx(particle_texture.texture,
-                        Vector2{ transform.position.x - scale * pixels_to_unit * particle_texture.texture.width, transform.position.y - scale * pixels_to_unit * particle_texture.texture.height },
-                        0.0f, scale / particle_texture.texture.width, color);
         }
     }
 }

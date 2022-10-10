@@ -10,7 +10,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<T>> assets;
 
 public:
-    const T &get(const std::string &name) {
+    T &get(const std::string &name) {
         if (assets.find(name) == assets.end()) {
             assets[name] = std::make_shared<T>();
 

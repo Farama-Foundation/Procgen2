@@ -1,8 +1,7 @@
 #pragma once
 
 #include "ecs.h"
-
-#include <raylib.h>
+#include "common_assets.h"
 
 // General
 struct Component_Transform {
@@ -31,11 +30,11 @@ struct Component_Sprite {
     Color tint{ 255, 255, 255, 255 };
     float z = 0.0f; // Ordering
 
-    Texture2D texture;
+    Asset_Texture* texture;
 };
 
 struct Component_Animation { // Requires a Component_Sprite as well in order to function
-    std::vector<Texture2D> frames;
+    std::vector<Asset_Texture*> frames;
 
     int frame_index = 0;
     float rate = 0.017f;

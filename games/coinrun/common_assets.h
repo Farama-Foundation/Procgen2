@@ -2,12 +2,18 @@
 
 #include "asset_manager.h"
 
-#include <raylib.h>
+#include "renderer.h"
+
 #include <stdexcept>
 
 class Asset_Texture {
 public:
-    Texture2D texture{0};
+    // SDL requires different textures for different renders for some reason
+    SDL_Texture* obs_texture = nullptr;
+    SDL_Texture* window_texture = nullptr;
+
+    int width = 0;
+    int height = 0;
 
     // Required
     void load(const std::string &name);
@@ -16,4 +22,4 @@ public:
 };
 
 // Manager for all textures
-static Asset_Manager<Asset_Texture> manager_texture;
+extern Asset_Manager<Asset_Texture> manager_texture;
