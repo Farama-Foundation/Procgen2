@@ -308,7 +308,7 @@ void System_Particles::update(float dt) {
         particles.spawn_timer += dt;
 
         // If time to spawn new particle
-        if (particles.spawn_timer >= particles.spawn_time) {
+        if (dead_index != -1 && particles.spawn_timer >= particles.spawn_time) {
             particles.spawn_timer = std::fmod(particles.spawn_timer, particles.spawn_time);
 
             Particle &p = particles.particles[dead_index];
@@ -321,15 +321,17 @@ void System_Particles::update(float dt) {
 
 void System_Particles::render() {
     const float scale = 1.0f;
-    const Color color{ 255, 255, 255, 127 };
 
     for (auto const &e : entities) {
-        auto const &transform = c.get_component<Component_Transform>(e);
         auto const &particles = c.get_component<Component_Particles>(e);
 
         for (int i = 0; i < particles.particles.size(); i++) {
             const Particle &p = particles.particles[i];
 
+            if (p.life <= 0.0f)
+                continue;
+            
+            gr.render_texture(&particle_texture, p.position, scale * unit_to_pixels / particle_texture.width, 0.5f);
         }
     }
 }

@@ -362,6 +362,7 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Update systems
     mob_ai->update(dt);
     std::pair<bool, bool> result = agent->update(dt, hazard, goal, action);
+    particles->update(dt);
     sprite_render->update(dt);
 
     step_data.reward.f = result.second * 10.0f;
@@ -474,6 +475,7 @@ void reset() {
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -1.0f, 1.0f, 1.0f } });
     c.add_component(e, Component_Dynamics{});
     c.add_component(e, Component_Agent{});
+    c.add_component(e, Component_Particles{ .particles = std::vector<Particle>(10) });
 
     // Determine themes
     std::uniform_int_distribution<int> agent_theme_dist(0, agent_themes.size() - 1);

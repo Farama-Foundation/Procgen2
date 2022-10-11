@@ -89,6 +89,7 @@ void System_Tilemap::spawn_enemy_mob(int x, int y, std::mt19937 &rng) {
     c.add_component(e, Component_Hazard{});
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.48f, 1.0f, 0.98f }});
     c.add_component(e, Component_Mob_AI{ .velocity_x = 1.5f * ((dist01(rng) < 0.5f) * 2.0f - 1.0f) });
+    c.add_component(e, Component_Particles{ .particles = std::vector<Particle>(10) });
     c.add_component(e, animation);
 }
 
