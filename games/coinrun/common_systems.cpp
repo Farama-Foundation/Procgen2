@@ -123,9 +123,9 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
     bool achieved_goal = false;
 
     // Parameters
-    const float max_jump = 16.0f;
+    const float max_jump = 15.0f;
     const float gravity = 14.0f;
-    const float max_speed = 6.0f;
+    const float max_speed = 4.0f;
     const float mix = 12.0f;
     const float air_control = 0.15f;
 
@@ -335,7 +335,7 @@ void System_Particles::render() {
 
             float life_ratio = (particles.lifespan - p.life) / particles.lifespan;
             
-            float alpha = base_alpha * life_ratio;
+            float alpha = base_alpha * (1.0f - life_ratio);
             float scale = base_scale * (0.4f * life_ratio + 0.6f);
             float offset_y = -life_ratio * 0.17f;
 
