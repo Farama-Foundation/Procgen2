@@ -54,7 +54,9 @@ void Renderer::render_texture(Asset_Texture* texture, const Vector2 &position, f
     if (alpha != 1.0f)
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255 * alpha);
 
-    SDL_Rect src_recti{ static_cast<int>(std::floor(src_rect.x)), static_cast<int>(std::floor(src_rect.y)), static_cast<int>(std::ceil(src_rect.w)) + 1, static_cast<int>(std::ceil(src_rect.h)) + 1 };
+    int padding = std::ceil(1.0f / (scale * camera_scale));
+
+    SDL_Rect src_recti{ static_cast<int>(std::floor(src_rect.x)), static_cast<int>(std::floor(src_rect.y)), static_cast<int>(std::ceil(src_rect.w)) + padding, static_cast<int>(std::ceil(src_rect.h)) + padding };
 
     // Prevent flickering from integer src_rect values by compensating
     Vector2 offset{ src_rect.x - src_recti.x, src_rect.y - src_recti.y };

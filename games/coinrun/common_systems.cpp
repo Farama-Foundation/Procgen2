@@ -223,6 +223,14 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
             }
         }
 
+        // Lava
+        std::pair<Vector2, bool> lava_collision = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
+            return (id == lava_mid || id == lava_top ? full : none);
+        });
+
+        if (lava_collision.second)
+            alive = false;
+
         // Go through all goals
         for (auto const &g : goal->get_entities()) {
             auto const &goal_transform = c.get_component<Component_Transform>(g);
