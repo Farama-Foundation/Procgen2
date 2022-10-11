@@ -56,12 +56,15 @@ public:
     int get_num_living_entities() const {
         return num_living_entities;
     }
+
+    void clear_entities();
 };
 
 class Interface_Component_Array {
 public:
     virtual ~Interface_Component_Array() = default;
     virtual void entity_destroyed(Entity e) = 0;
+    virtual void clear_entities() = 0;
 };
 
 template<typename T>
@@ -121,6 +124,13 @@ public:
         // Remove if exists
         if (entity_to_index.find(e) != entity_to_index.end())
             remove(e);
+    }
+
+    void clear_entities() override {
+        entity_to_index.clear();
+        index_to_entity.clear();
+
+        size = 0;
     }
 };
 
@@ -188,6 +198,15 @@ public:
             component->entity_destroyed(e);
         }
     }
+
+    void clear_entities() {
+        // Notify all
+        for (auto const &pair : component_arrays) {
+            auto const &component = pair.second;
+
+            component->clear_entities();
+        }
+    }
 };
 
 class System {
@@ -236,6 +255,7 @@ public:
     }
 
     void entity_destroyed(Entity e);
+    void clear_entities();
 
     void entity_signature_changed(Entity e, Signature s);
 };
@@ -251,7 +271,7 @@ public:
     }
 
     void destroy_entity(Entity e);
-    void destroy_all_entities();
+    void clear_entities();
 
     template<typename T>
     void register_component() {

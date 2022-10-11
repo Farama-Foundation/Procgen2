@@ -35,12 +35,35 @@ void Entity_Manager::destroy_entity(Entity e) {
     num_living_entities--;
 }
 
+void Entity_Manager::clear_entities() {
+    entities_in_use.clear();
+
+    available_entities = std::queue<Entity>();
+
+    for (Entity e = 0; e < max_entities; e++) {
+        signatures[e].reset();
+
+        available_entities.push(e);
+    }
+
+    num_living_entities = 0;
+}
+
 void System_Manager::entity_destroyed(Entity e) {
     // Erase from all
     for (auto const &pair : systems) {
         auto const &system = pair.second;
 
         system->entities.erase(e);
+    }
+}
+
+void System_Manager::clear_entities() {
+    // Erase from all
+    for (auto const &pair : systems) {
+        auto const &system = pair.second;
+
+        system->entities.clear();
     }
 }
 
@@ -65,19 +88,10 @@ void Coordinator::destroy_entity(Entity e) {
     system_manager.entity_destroyed(e);
 }
 
-void Coordinator::destroy_all_entities() {
-    int num_entities = entity_manager.get_num_living_entities();
-
-    for (Entity e = 0; e < num_entities; e++) {
-        bool used = entity_manager.in_use(e);
-
-        if (used) 
-            destroy_entity(e);
-        else {
-            if (num_entities < max_entities)
-                num_entities++;
-        }
-    }
+void Coordinator::clear_entities() {
+    entity_manager.clear_entities();
+    component_manager.clear_entities();
+    system_manager.clear_entities();
 }
 
 Coordinator c;

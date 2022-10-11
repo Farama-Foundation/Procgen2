@@ -452,7 +452,7 @@ void render_game(bool is_obs) {
 }
 
 void reset() {
-    c.destroy_all_entities();
+    c.clear_entities();
 
     tilemap->regenerate(rng, tilemap_config);
 
