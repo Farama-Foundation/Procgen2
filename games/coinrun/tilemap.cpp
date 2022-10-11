@@ -393,6 +393,9 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, cons
 }
 
 void System_Tilemap::update_no_collide(const Rectangle &player_rectangle, const Rectangle &outer_rectangle) {
+    Rectangle shifted_rectangle = player_rectangle;
+    shifted_rectangle.y -= 0.5f;
+
     // Only check "real" tiles (not out of bounds) by clamping to 0, width/height range
     int lower_x = std::max(0, static_cast<int>(std::floor(outer_rectangle.x)));
     int lower_y = std::max(0, static_cast<int>(std::floor(outer_rectangle.y)));
@@ -415,6 +418,8 @@ void System_Tilemap::update_no_collide(const Rectangle &player_rectangle, const 
 
                 if (!check_collision(player_rectangle, tile))
                     no_collide_mask[index] = false;
+                else if (check_collision(shifted_rectangle, tile))
+                    no_collide_mask[index] = true;
             }
         }
 }

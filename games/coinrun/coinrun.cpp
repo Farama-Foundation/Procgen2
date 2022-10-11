@@ -41,7 +41,7 @@ SDL_Renderer* obs_renderer;
 // Masking for SDL surfaces
 uint32_t rmask, gmask, bmask, amask;
 
-float dt = 0.017f;
+float dt = 1.0f / 20.0f; // 20 fps
 
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;

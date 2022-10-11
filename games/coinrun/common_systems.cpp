@@ -145,7 +145,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         const auto &collision = c.get_component<Component_Collision>(e);
 
-        float movement_x = (agent.action == 0 || agent.action == 1) - (agent.action == 6 || agent.action == 7);
+        float movement_x = (agent.action == 0 || agent.action == 1 || agent.action == 2) - (agent.action == 6 || agent.action == 7 || agent.action == 8);
         bool jump = (agent.action == 2 || agent.action == 5 || agent.action == 8);
         bool fallthrough = (agent.action == 0 || agent.action == 3 || agent.action == 6);
 
@@ -160,13 +160,9 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
         if (jump && agent.on_ground)
             dynamics.velocity.y = -max_jump;
         else if (fallthrough) {
-            // Set currently occupied tiles to not collide
-            tilemap->set_no_collide(transform.position.x, tilemap->get_height() - 1 - static_cast<int>(transform.position.y - 0.99f));
-            tilemap->set_no_collide(transform.position.x, tilemap->get_height() - 1 - static_cast<int>(transform.position.y - 0.5f));
-
             // Set 1-2 tiles below to not collide
-            tilemap->set_no_collide(transform.position.x - 0.49f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
-            tilemap->set_no_collide(transform.position.x + 0.49f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
+            tilemap->set_no_collide(transform.position.x - 0.48f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
+            tilemap->set_no_collide(transform.position.x + 0.48f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
         }
 
         dynamics.velocity.y += gravity * dt;

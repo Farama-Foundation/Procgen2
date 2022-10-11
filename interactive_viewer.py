@@ -77,4 +77,4 @@ while running:
 
     pygame.display.flip()
 
-    pygame.time.delay(max(0, 1000 // 60 - dt))
+    pygame.time.delay(max(0, 1000 // 20 - dt))
