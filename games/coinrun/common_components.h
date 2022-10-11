@@ -30,7 +30,7 @@ struct Component_Sprite {
     Color tint{ 255, 255, 255, 255 };
     float z = 0.0f; // Ordering
 
-    Asset_Texture* texture;
+    Asset_Texture* texture = nullptr;
 };
 
 struct Component_Animation { // Requires a Component_Sprite as well in order to function

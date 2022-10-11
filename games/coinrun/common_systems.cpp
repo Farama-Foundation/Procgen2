@@ -46,28 +46,19 @@ void System_Sprite_Render::render(Sprite_Render_Mode mode) {
         auto const &sprite = c.get_component<Component_Sprite>(e);
         auto const &transform = c.get_component<Component_Transform>(e);
 
+        if (sprite.texture == nullptr)
+            continue;
+
         // Sorting relative to tile map system - negative is behind, positive in front
         if (mode == positive_z && sprite.z < 0.0f)
             continue;
         else if (mode == negative_z && sprite.z >= 0.0f)
             break;
 
-        // Relative
-        float cos_rot = std::cos(transform.rotation);
-        float sin_rot = std::sin(transform.rotation);
-
-        Vector2 offset{ cos_rot * sprite.position.x - sin_rot * sprite.position.y, sin_rot * sprite.position.x + cos_rot * sprite.position.y };
-
-        Vector2 position = (Vector2){ transform.position.x + offset.x, transform.position.y + offset.y };
-        float rotation = transform.rotation + sprite.rotation;
         float scale = transform.scale * sprite.scale;
 
-        // Find sprite AABB rectangle
-        Rectangle aabb = (Rectangle){ position.x, position.y, sprite.texture->width * pixels_to_unit, sprite.texture->height * pixels_to_unit };
-        aabb = rotated_scaled_AABB(aabb, rotation, scale);
-
         // If visible
-        gr.render_texture(sprite.texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, scale * unit_to_pixels / sprite.texture->width, 1.0f, sprite.flip_x);
+        gr.render_texture(sprite.texture, (Vector2){ (transform.position.x + sprite.position.x) * unit_to_pixels, (transform.position.y + sprite.position.y) * unit_to_pixels }, scale * unit_to_pixels / sprite.texture->width, 1.0f, sprite.flip_x);
     }
 }
 
