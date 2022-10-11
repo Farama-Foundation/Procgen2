@@ -475,7 +475,7 @@ void reset() {
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -1.0f, 1.0f, 1.0f } });
     c.add_component(e, Component_Dynamics{});
     c.add_component(e, Component_Agent{});
-    c.add_component(e, Component_Particles{ .particles = std::vector<Particle>(10) });
+    c.add_component(e, Component_Particles{ .particles = std::vector<Particle>(20) });
 
     // Determine themes
     std::uniform_int_distribution<int> agent_theme_dist(0, agent_themes.size() - 1);

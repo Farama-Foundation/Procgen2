@@ -69,7 +69,8 @@ struct Particle {
 struct Component_Particles {
     std::vector<Particle> particles;
 
-    float lifespan = 0.1333f;
+    Vector2 offset{ 0.0f, 0.0f };
+    float lifespan = 0.75f;
     float spawn_timer = 0.0f;
-    float spawn_time = 0.02f;
+    float spawn_time = 0.08f;
 };

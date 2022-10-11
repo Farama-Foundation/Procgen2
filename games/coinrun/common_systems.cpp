@@ -314,13 +314,15 @@ void System_Particles::update(float dt) {
             Particle &p = particles.particles[dead_index];
 
             p.life = particles.lifespan;
-            p.position = transform.position;
+            p.position.x = transform.position.x + particles.offset.x;
+            p.position.y = transform.position.y + particles.offset.y;
         }
     }
 }
 
 void System_Particles::render() {
-    const float scale = 1.0f;
+    const float base_alpha = 0.5f;
+    const float base_scale = 0.45f;
 
     for (auto const &e : entities) {
         auto const &particles = c.get_component<Component_Particles>(e);
@@ -330,8 +332,14 @@ void System_Particles::render() {
 
             if (p.life <= 0.0f)
                 continue;
+
+            float life_ratio = (particles.lifespan - p.life) / particles.lifespan;
             
-            gr.render_texture(&particle_texture, p.position, scale * unit_to_pixels / particle_texture.width, 0.5f);
+            float alpha = base_alpha * life_ratio;
+            float scale = base_scale * (0.4f * life_ratio + 0.6f);
+            float offset_y = -life_ratio * 0.17f;
+
+            gr.render_texture(&particle_texture, (Vector2){ p.position.x * unit_to_pixels - 0.5f * particle_texture.width * scale, (p.position.y + offset_y) * unit_to_pixels - 0.5f * particle_texture.height * scale }, scale * unit_to_pixels / particle_texture.width, alpha);
         }
     }
 }

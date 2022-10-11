@@ -51,8 +51,10 @@ void Renderer::render_texture(Asset_Texture* texture, const Vector2 &position, f
         dst_rect.h = camera_size.y - dst_rect.y;
     }
 
+    SDL_Texture* current_texture = rendering_obs ? texture->obs_texture : texture->window_texture;
+
     if (alpha != 1.0f)
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255 * alpha);
+        SDL_SetTextureAlphaMod(current_texture, 255 * alpha);
 
     int padding = std::ceil(1.0f / (scale * camera_scale));
 
@@ -74,7 +76,7 @@ void Renderer::render_texture(Asset_Texture* texture, const Vector2 &position, f
     SDL_RenderCopyExF(renderer, rendering_obs ? texture->obs_texture : texture->window_texture, &src_recti, &dst_rect, 0.0f, NULL, flip_horizontal ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 
     if (alpha != 1.0f)
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_SetTextureAlphaMod(current_texture, 255);
 }
 
 Renderer::~Renderer() {
