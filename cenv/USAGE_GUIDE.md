@@ -48,7 +48,7 @@ Note that the structures in cenv.h often support multiple datatypes, this is han
 - d: float64 (double)
 - b: byte (unsigned char)
 
-Which one to use is identified by the tag (an enum, cenv_value_type). See [test_env.h](./test_env.h) for an example of how to access these.
+Which one to use is identified by the tag (an enum, cenv_value_type). See [test_env.c](./test_env.c) for an example of how to access these.
 
 ### Key-Value
 

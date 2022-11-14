@@ -52,7 +52,6 @@ private:
 
     std::vector<Tile_ID> tile_ids;
     std::vector<int> crate_type_indices;
-    std::vector<bool> no_collide_mask; // For fallthrough tiles like crates
 
     void spawn_enemy_saw(int x, int y);
     void spawn_enemy_mob(int x, int y, std::mt19937 &rng);
@@ -87,18 +86,7 @@ public:
     void render(int theme);
 
     // General collision detection, returns new rectangle position and a collision flag
-    std::pair<Vector2, bool> get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, float velocity_y = 0.0f);
-
-    // For fall-through platforms
-    void update_no_collide(const Rectangle &player_rectangle, const Rectangle &outer_rectangle);
-
-    void set_no_collide(int x, int y) {
-        if (x < 0 || y < 0 || x >= map_width || y >= map_height)
-            return;
-
-        if (get(x, y) == crate)
-            no_collide_mask[y + x * map_height] = true;
-    }
+    std::pair<Vector2, bool> get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, bool fallthrough = false, float step_y = 0.0f);
 
     int get_width() const {
         return map_width;

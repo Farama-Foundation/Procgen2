@@ -159,11 +159,6 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         if (jump && agent.on_ground)
             dynamics.velocity.y = -max_jump;
-        else if (fallthrough) {
-            // Set 1-2 tiles below to not collide
-            tilemap->set_no_collide(transform.position.x - 0.48f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
-            tilemap->set_no_collide(transform.position.x + 0.48f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
-        }
 
         dynamics.velocity.y += gravity * dt;
         
@@ -180,10 +175,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
             return (id == wall_mid || id == wall_top ? full : (id == crate ? down_only : none));
-        }, dynamics.velocity.y);
-
-        // Update no collide mask (for fallthrough platform logic) given some large bounds to check around the agent
-        tilemap->update_no_collide(world_collision, Rectangle{ transform.position.x - 4.0f, transform.position.y - 4.0f, 8.0f, 8.0f });
+        }, fallthrough, dynamics.velocity.y * dt);
 
         // If was moved up, on ground
         Vector2 delta_position{ collision_data.first.x - world_collision.x, collision_data.first.y - world_collision.y };
