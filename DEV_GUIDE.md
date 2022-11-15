@@ -2,7 +2,26 @@
 
 This guide serves to help describe how to implement a game for ProcGen2. For a guide on just CEnv, see its corresponding [usage guide](./cenv/USAGE_GUIDE.md).
 Due to CEnv, ProcGen2 games can be developed mostly independently. However, for readability and maintainibility, we prefer if games are implemented in a similar manner.
-The [coinrun](./games/coinrun/) environment should be roughly mimicked in terms of systems and programming style. The following describes some systems that exist in coinrun to aid implementation in other games (when appropriate).
+The [coinrun](./games/coinrun/) environment should be roughly mimicked in terms of systems, programming language (C++), and programming style. The following describes some systems that exist in coinrun to aid implementation in other games (when appropriate).
+
+## Compiling
+
+Coinrun depends only on [SDL2](https://www.libsdl.org/) and the [SDL2_image](https://github.com/libsdl-org/SDL_image) extension. Make sure these are installed. If on Linux, these can likely be found in your package manager.
+
+Coinrun can be compiled using [CMake](https://cmake.org/). From the directory containing the [CMakeLists.txt](./games/coinrun/CMakeLists.txt), create a directory called "build" and enter it:
+
+```
+mkdir build
+cd build
+```
+
+Then call CMake:
+
+```
+cmake ..
+```
+
+CMake will then generate the build files for your operating system. Use these to build the game.
 
 ## ECS
 
@@ -11,7 +30,7 @@ Please give it a read if you are unfamiliar with the basic concepts of ECS.
 
 In coinrun, most components are implemented in [common_components.h](./games/coinrun/common_components.h). As is expected in ECS, components are data-only structures.
 Most systems are implemented in [common_systems.h](./games/coinrun/common_systems.h) and [common_systems.cpp](./games/coinrun/common_systems.h). Included are systems for controlling mobs (enemies), the agent/player, particles, etc.
-The tilemap system is implemented in its own file, [tilemap.h](./games/coinrun/tilemap.h) and [tilemap.cpp](./games/coinrun/tilemap.cpp).
+The tilemap system is implemented in its own files though, [tilemap.h](./games/coinrun/tilemap.h) and [tilemap.cpp](./games/coinrun/tilemap.cpp).
 
 [coinrun.cpp](./games/coinrun/coinrun.cpp) contains the implementation of the CEnv interface but also registers ECS components and sets up ECS systems.
 
