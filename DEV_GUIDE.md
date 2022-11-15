@@ -70,6 +70,10 @@ Systems are run in the cenv_step function. For mob AI:
 mob_ai->update(dt);
 ```
 
+### ECS Notes
+
+The ECS allocates fixed-size buffers to store entities/components. If the existing maximum entity or maximum component counts are too small, they can be adjusted at the top of [ecs.h](./games/coinrun/ecs.h).
+
 ## Asset Manager
 
 To avoid duplicate asset loading, coinrun uses an asset manager. This is implemented in [asset_manager.h](./games/coinrun/asset_manager.h).
