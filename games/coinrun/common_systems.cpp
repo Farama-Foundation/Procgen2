@@ -145,7 +145,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         const auto &collision = c.get_component<Component_Collision>(e);
 
-        float movement_x = (agent.action == 0 || agent.action == 1 || agent.action == 2) - (agent.action == 6 || agent.action == 7 || agent.action == 8);
+        float movement_x = (agent.action == 6 || agent.action == 7 || agent.action == 8) - (agent.action == 0 || agent.action == 1 || agent.action == 2);
         bool jump = (agent.action == 2 || agent.action == 5 || agent.action == 8);
         bool fallthrough = (agent.action == 0 || agent.action == 3 || agent.action == 6);
 
