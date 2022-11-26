@@ -11,7 +11,7 @@ env_original = gym.make("procgen:procgen-coinrun-v0", render_mode="rgb_array")
 env = CEnv("games/coinrun/build/libCoinRun.so")
 
 obs_original = env_original.reset()
-obs, _ = env.reset()
+obs, _ = env.reset(options={ "width": 512, "height": 512 })
 
 screen = pygame.display.set_mode((512, 512))
 

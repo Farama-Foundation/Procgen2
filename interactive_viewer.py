@@ -5,8 +5,8 @@ import pygame
 import pygame.surfarray
 import time
 
-width = int(800)
-height = int(800)
+width = 512
+height = 512
 
 env = CEnv("games/coinrun/build/libCoinRun.so", options={ "width": width, "height": height })
 
