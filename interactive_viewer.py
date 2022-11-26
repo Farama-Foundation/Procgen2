@@ -5,13 +5,16 @@ import pygame
 import pygame.surfarray
 import time
 
-env = CEnv("games/coinrun/build/libCoinRun.so")
+width = int(800)
+height = int(800)
+
+env = CEnv("games/coinrun/build/libCoinRun.so", options={ "width": width, "height": height })
 
 print(env.observation_space)
 
 obs, info = env.reset()
 
-screen = pygame.display.set_mode((800, 800))
+screen = pygame.display.set_mode((width, height))
 
 running = True
 
@@ -40,9 +43,9 @@ while running:
 
     action = 0
 
-    if ks[pygame.K_d]:
+    if ks[pygame.K_a]:
         action = 0
-    elif ks[pygame.K_a]:
+    elif ks[pygame.K_d]:
         action = 6
     else:
         action = 4

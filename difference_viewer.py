@@ -6,14 +6,14 @@ import pygame.surfarray
 import procgen
 import time
 
-env_original = gym.make("procgen:procgen-coinrun-v0")
+env_original = gym.make("procgen:procgen-coinrun-v0", render_mode="rgb_array")
 
 env = CEnv("games/coinrun/build/libCoinRun.so")
 
 obs_original = env_original.reset()
 obs, _ = env.reset()
 
-screen = pygame.display.set_mode((800, 800))
+screen = pygame.display.set_mode((512, 512))
 
 running = True
 
@@ -42,9 +42,9 @@ while running:
 
     action = 0
 
-    if ks[pygame.K_d]:
+    if ks[pygame.K_a]:
         action = 0
-    elif ks[pygame.K_a]:
+    elif ks[pygame.K_d]:
         action = 6
     else:
         action = 4
@@ -64,6 +64,9 @@ while running:
         else:
             action = 4
 
+    frame_original = env_original.render(mode="rgb_array")
+    frame = env.render()
+
     obs_original, _, _, _ = env_original.step(action)
     obs, reward, term, trunc, _ = env.step(action)
 
@@ -71,11 +74,17 @@ while running:
         obs_original = env_original.reset()
         obs, _ = env.reset()
 
-    obs = obs["screen"].reshape((64, 64, 3))
+    surf = None
 
-    difference_image = (((obs / 255.0 - obs_original / 255.0) * 0.5 + 0.5) * 255.0).astype(np.uint8)
-    surf = pygame.surfarray.make_surface(np.swapaxes(difference_image, 0, 1))
-    surf = pygame.transform.scale(surf, (800, 800))
+    if ks[pygame.K_0]:
+        surf = pygame.surfarray.make_surface(np.swapaxes(frame_original, 0, 1))
+    elif ks[pygame.K_1]:
+        surf = pygame.surfarray.make_surface(np.swapaxes(frame.reshape((512, 512, 3)), 0, 1))
+    else:
+        difference_image = (((frame / 255.0 - frame_original / 255.0) * 0.5 + 0.5) * 255.0).astype(np.uint8)
+        surf = pygame.surfarray.make_surface(np.swapaxes(difference_image, 0, 1))
+
+    surf = pygame.transform.scale(surf, (512, 512))
 
     screen.blit(surf, (0, 0))
 

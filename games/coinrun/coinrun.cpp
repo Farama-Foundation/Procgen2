@@ -26,10 +26,10 @@ const int obs_width = 64;
 const int obs_height = 64;
 const int num_actions = 15;
 
-const int window_width = 800;
-const int window_height = 800;
+int window_width = 512;
+int window_height = 512;
 
-const float game_zoom = 0.35f; // Base game zoom level
+const float game_zoom = 0.3f; // Base game zoom level
 
 std::mt19937 rng;
 
@@ -41,7 +41,8 @@ SDL_Renderer* obs_renderer;
 // Masking for SDL surfaces
 uint32_t rmask, gmask, bmask, amask;
 
-float dt = 1.0f / 20.0f; // 20 fps
+const int sub_steps = 4; // Physics sub-steps
+float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it this way due to the weird way the original procgen works w.r.t. physics
 
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
@@ -125,6 +126,29 @@ int32_t cenv_get_env_version() {
 
 int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options_size) {
     // ---------------------- CEnv Interface ----------------------
+
+    unsigned int seed = time(nullptr);
+
+    // Parse options
+    for (int i = 0; i < options_size; i++) {
+        std::string name(options[i].name);
+
+        if (name == "seed") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+
+            seed = options[i].value.i;
+        }
+        else if (name == "width") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+
+            window_width = options[i].value.i;
+        }
+        else if (name == "height") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+
+            window_height = options[i].value.i;
+        }
+    }
     
     // Allocate make data
     make_data.observation_spaces_size = 1;
@@ -177,19 +201,6 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     render_data.value_buffer_width = window_width;
     render_data.value_buffer_channels = 3;
     render_data.value_buffer.b = (uint8_t*)malloc(window_width * window_height * 3 * sizeof(uint8_t));
-
-    unsigned int seed = time(nullptr);
-
-    // Parse options
-    for (int i = 0; i < options_size; i++) {
-        std::string name(options[i].name);
-
-        if (name == "seed") {
-            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
-
-            seed = options[i].value.i;
-        }
-    }
 
     // ---------------------- Game ----------------------
 
@@ -294,7 +305,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     return 0; // No error
 }
 
-int32_t cenv_reset(int32_t seed, cenv_option* options, int32_t options_size) {
+int32_t cenv_reset(cenv_option* options, int32_t options_size) {
     // Parse options
     for (int i = 0; i < options_size; i++) {
         std::string name(options[i].name);
@@ -328,6 +339,37 @@ int32_t cenv_reset(int32_t seed, cenv_option* options, int32_t options_size) {
 }
 
 int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
+    int action = 0;
+
+    // Parse actions
+    for (int i = 0; i < actions_size; i++) {
+        std::string key(actions[i].key);
+
+        if (key == "action") {
+            assert(actions[i].value_type == CENV_VALUE_TYPE_INT);
+            assert(actions[i].value_buffer_size == 1);
+
+            action = actions[i].value_buffer.i[0];
+        }
+    }
+
+    // Sub-steps
+    for (int ss = 0; ss < sub_steps; ss++) {
+        // Update systems
+        mob_ai->update(dt);
+        std::pair<bool, bool> result = agent->update(dt, hazard, goal, action);
+        particles->update(dt);
+        sprite_render->update(dt);
+
+        step_data.reward.f = result.second * 10.0f;
+
+        step_data.terminated = !result.first || result.second;
+        step_data.truncated = false;
+
+        if (step_data.terminated)
+            break;
+    }
+
     // Render and grab pixels
     render_game(true);
 
@@ -344,31 +386,6 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
         }
 
     SDL_UnlockSurface(obs_target);
-
-    int action = 0;
-
-    // Parse actions
-    for (int i = 0; i < actions_size; i++) {
-        std::string key(actions[i].key);
-
-        if (key == "action") {
-            assert(actions[i].value_type == CENV_VALUE_TYPE_INT);
-            assert(actions[i].value_buffer_size == 1);
-
-            action = actions[i].value_buffer.i[0];
-        }
-    }
-
-    // Update systems
-    mob_ai->update(dt);
-    std::pair<bool, bool> result = agent->update(dt, hazard, goal, action);
-    particles->update(dt);
-    sprite_render->update(dt);
-
-    step_data.reward.f = result.second * 10.0f;
-
-    step_data.terminated = !result.first || result.second;
-    step_data.truncated = false;
 
     return 0; // No error
 }

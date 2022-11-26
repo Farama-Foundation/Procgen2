@@ -37,7 +37,7 @@ struct Component_Animation { // Requires a Component_Sprite as well in order to 
     std::vector<Asset_Texture*> frames;
 
     int frame_index = 0;
-    float rate = 0.017f;
+    float rate = 0.1f;
     float t = 0.0f;
 };
 
@@ -47,7 +47,7 @@ struct Component_Goal {};
 
 // Game logic
 struct Component_Mob_AI {
-    float velocity_x = 1.5f;
+    float velocity_x = 0.15f;
 };
 
 struct Component_Agent {
@@ -57,7 +57,7 @@ struct Component_Agent {
     bool face_forward = true;
 
     // Agent-specific animation
-    float rate = 2.0f;
+    float rate = 0.1f;
     float t = 0.0f;
 };
 
@@ -70,7 +70,7 @@ struct Component_Particles {
     std::vector<Particle> particles;
 
     Vector2 offset{ 0.0f, 0.0f };
-    float lifespan = 0.75f;
+    float lifespan = 5.0f;
     float spawn_timer = 0.0f;
-    float spawn_time = 0.08f;
+    float spawn_time = 0.5f;
 };

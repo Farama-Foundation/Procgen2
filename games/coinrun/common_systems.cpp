@@ -20,8 +20,8 @@ void System_Sprite_Render::update(float dt) {
 
             animation.t += dt;
 
-            int frames_advance = animation.t / animation.rate;
-            animation.t -= frames_advance * animation.rate; 
+            int frames_advance = animation.t * animation.rate;
+            animation.t -= frames_advance / animation.rate; 
                 
             animation.frame_index = (animation.frame_index + frames_advance) % animation.frames.size();
 
@@ -123,10 +123,10 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
     bool achieved_goal = false;
 
     // Parameters
-    const float max_jump = 15.0f;
-    const float gravity = 14.0f;
-    const float max_speed = 4.0f;
-    const float mix = 12.0f;
+    const float max_jump = 1.55f;
+    const float gravity = 0.2f;
+    const float max_speed = 0.5f;
+    const float mix = 0.2f;
     const float air_control = 0.15f;
 
     // Get tile map system
