@@ -82,7 +82,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     return 0; // No error
 }
 
-int32_t cenv_reset(int32_t seed, cenv_option* options, int32_t options_size) {
+int32_t cenv_reset(cenv_option* options, int32_t options_size) {
     t = 0.0f;
 
     for (int i = 0; i < observation.value_buffer_size; i++)

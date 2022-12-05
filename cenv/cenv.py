@@ -4,6 +4,7 @@ import collections
 import copy
 import sys
 import numpy as np
+import ctypes
 from ctypes import *
 import struct
 
@@ -37,14 +38,14 @@ CENV_VALUE_TYPE_TO_CTYPE = [
 
 CENV_PYTHON_TYPE_TO_VALUE_TYPE = {
     int: 0,
-    float: 1
+    float: 2
 }
 
 CENV_NUMPY_DTYPE_TO_VALUE_TYPE = {
-    np.int32: 0,
-    np.float32: 1,
-    np.float64: 2,
-    np.uint8: 3
+    np.dtype('int32'): 0,
+    np.dtype('float32'): 1,
+    np.dtype('float64'): 2,
+    np.dtype('uint8'): 3
 }
 
 CENV_VALUE_TYPE_TO_NUMPY_DTYPE = [
@@ -58,56 +59,56 @@ CENV_VALUE_TYPE_TO_NUMPY_DTYPE = [
     np.int32
 ]
 
-class CGym_Value(Union):
+class CEnv_Value(Union):
     _fields_ = [("i", c_int32),
                 ("f", c_float),
                 ("d", c_double),
                 ("b", c_byte)]
 
-class CGym_Value_Buffer(Union):
+class CEnv_Value_Buffer(Union):
     _fields_ = [("i", POINTER(c_int32)),
                 ("f", POINTER(c_float)),
                 ("d", POINTER(c_double)),
                 ("b", POINTER(c_byte))]
 
-class CGym_Key_Value(Structure):
+class CEnv_Key_Value(Structure):
     _fields_ = [("key", c_char_p),
                 ("value_type", c_int32),
                 ("value_buffer_size", c_int32),
-                ("value_buffer", CGym_Value_Buffer)]
+                ("value_buffer", CEnv_Value_Buffer)]
 
-class CGym_Option(Structure):
+class CEnv_Option(Structure):
     _fields_ = [("name", c_char_p),
                 ("value_type", c_int32),
-                ("value", CGym_Value)]
+                ("value", CEnv_Value)]
 
-class CGym_Make_Data(Structure):
+class CEnv_Make_Data(Structure):
     _fields_ = [("observation_spaces_size", c_int32),
-                ("observation_spaces", POINTER(CGym_Key_Value)),
+                ("observation_spaces", POINTER(CEnv_Key_Value)),
                 ("action_spaces_size", c_int32),
-                ("action_spaces", POINTER(CGym_Key_Value))]
+                ("action_spaces", POINTER(CEnv_Key_Value))]
 
-class CGym_Reset_Data(Structure):
+class CEnv_Reset_Data(Structure):
     _fields_ = [("observations_size", c_int32),
-                ("observations", POINTER(CGym_Key_Value)),
+                ("observations", POINTER(CEnv_Key_Value)),
                 ("infos_size", c_int32),
-                ("infos", POINTER(CGym_Key_Value))] 
+                ("infos", POINTER(CEnv_Key_Value))] 
 
-class CGym_Step_Data(Structure):
+class CEnv_Step_Data(Structure):
     _fields_ = [("observations_size", c_int32),
-                ("observations", POINTER(CGym_Key_Value)),
-                ("reward", CGym_Value),
+                ("observations", POINTER(CEnv_Key_Value)),
+                ("reward", CEnv_Value),
                 ("terminated", c_bool),
                 ("truncated", c_bool),
                 ("infos_size", c_int32),
-                ("infos", POINTER(CGym_Key_Value))] 
+                ("infos", POINTER(CEnv_Key_Value))] 
 
-class CGym_Render_Data(Structure):
+class CEnv_Render_Data(Structure):
     _fields_ = [("value_type", c_int32),
                 ("value_buffer_width", c_int32),
                 ("value_buffer_height", c_int32),
                 ("value_buffer_channels", c_int32),
-                ("value_buffer", CGym_Value_Buffer)]
+                ("value_buffer", CEnv_Value_Buffer)]
 
 # From https://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
 def _make_nd_array(c_pointer, shape, dtype=np.float32, order='C', own_data=True):
@@ -130,6 +131,24 @@ def _make_nd_array(c_pointer, shape, dtype=np.float32, order='C', own_data=True)
 
     return arr
 
+def _put_value_buffer(arr):
+    type_index = CENV_NUMPY_DTYPE_TO_VALUE_TYPE[arr.dtype]
+
+    c_arr_p = ctypes.POINTER(CENV_VALUE_TYPE_TO_CTYPE[type_index])
+
+    buffer = CEnv_Value_Buffer()
+
+    if type_index == 0:
+        buffer.i = arr.ctypes.data_as(c_arr_p)
+    elif type_index == 1:
+        buffer.f = arr.ctypes.data_as(c_arr_p)
+    elif type_index == 2:
+        buffer.d = arr.ctypes.data_as(c_arr_p)
+    elif type_index == 3:
+        buffer.b = arr.ctypes.data_as(c_arr_p)
+
+    return buffer
+
 class CEnv(Env):
     metadata = {"render_modes": ["human", "single_rgb_array"]}
 
@@ -141,13 +160,13 @@ class CEnv(Env):
         self.lib.cenv_get_env_version.argtypes = []
         self.lib.cenv_get_env_version.restype = c_int32
 
-        self.lib.cenv_make.argtypes = [c_char_p, POINTER(CGym_Option), c_int32]
+        self.lib.cenv_make.argtypes = [c_char_p, POINTER(CEnv_Option), c_int32]
         self.lib.cenv_make.restype = c_int32
 
-        self.lib.cenv_reset.argtypes = [c_int32, POINTER(CGym_Option), c_int32]
+        self.lib.cenv_reset.argtypes = [POINTER(CEnv_Option), c_int32]
         self.lib.cenv_reset.restype = c_int32
 
-        self.lib.cenv_step.argtypes = [POINTER(CGym_Key_Value), c_int32]
+        self.lib.cenv_step.argtypes = [POINTER(CEnv_Key_Value), c_int32]
         self.lib.cenv_step.restype = c_int32
 
         self.lib.cenv_render.argtypes = []
@@ -157,28 +176,34 @@ class CEnv(Env):
         self.lib.cenv_close.restype = None
 
         # Get pointers to globals
-        self.c_make_data = CGym_Make_Data.in_dll(self.lib, "make_data")
-        self.c_reset_data = CGym_Reset_Data.in_dll(self.lib, "reset_data")
-        self.c_step_data = CGym_Step_Data.in_dll(self.lib, "step_data")
-        self.c_render_data = CGym_Render_Data.in_dll(self.lib, "render_data")
+        self.c_make_data = CEnv_Make_Data.in_dll(self.lib, "make_data")
+        self.c_reset_data = CEnv_Reset_Data.in_dll(self.lib, "reset_data")
+        self.c_step_data = CEnv_Step_Data.in_dll(self.lib, "step_data")
+        self.c_render_data = CEnv_Render_Data.in_dll(self.lib, "render_data")
 
         ret = 0
 
-        if options == None:
-            ret = self.lib.cenv_make(bytes("" if render_mode == None else render_mode, "ascii"), None, c_int32(0))
-        else:
-            # Make environment
-            c_options = CGym_Option * len(options)
+        c_options = None
+        num_options = 0
+
+        if options != None:
+            num_options = len(options)
+
+            c_options = (CEnv_Option * num_options)()
+
+            i = 0
 
             for k, v in options.items():
-                c_options[i].name = k
+                c_options[i].name = bytes(k, encoding="ascii")
 
                 value_type = CENV_PYTHON_TYPE_TO_VALUE_TYPE[type(v)]
 
                 c_options[i].value_type = c_int32(value_type)
-                c_options[i].value = CGym_Value(GYM_VALUE_TYPE_TO_CTYPE[value_type](v))
+                c_options[i].value = CEnv_Value(CENV_VALUE_TYPE_TO_CTYPE[value_type](v))
 
-            ret = self.lib.cenv_make("" if render_mode == None else render_mode, c_options, c_int32(len(options)))
+                i += 1
+
+        ret = self.lib.cenv_make(bytes("" if render_mode == None else render_mode, "ascii"), c_options, c_int32(num_options))
 
         if ret != 0:
             raise(Exception("Non-zero error code!"))
@@ -226,27 +251,31 @@ class CEnv(Env):
         if type(action) is int:
             c_action = c_int32(action)
 
-            c_value_buffer = CGym_Value_Buffer()
+            c_value_buffer = CEnv_Value_Buffer()
             c_value_buffer.i = pointer(c_action)
 
-            c_actions = CGym_Key_Value(b"action", c_int32(CENV_VALUE_TYPE_INT), c_int32(1), c_value_buffer)
+            c_actions = CEnv_Key_Value(b"action", c_int32(CENV_VALUE_TYPE_INT), c_int32(1), c_value_buffer)
         elif type(action) is np.array:
             action = np.ascontiguousarray(action)
 
-            c_value_buffer = CGym_Value_Buffer()
+            c_value_buffer = CEnv_Value_Buffer()
             c_value_buffer.b = addressof(action.data)
 
-            c_actions = CGym_Key_Value(b"action", c_int32(CENV_NUMPY_DTYPE_TO_VALUE_TYPE[action.dtype]), c_int32(len(action)), c_value_buffer)
+            c_actions = CEnv_Key_Value(b"action", c_int32(CENV_NUMPY_DTYPE_TO_VALUE_TYPE[action.dtype]), c_int32(len(action)), c_value_buffer)
         elif type(action) is dict:
             num_actions = len(action)
             
-            c_actions = CGym_Key_Value * num_actions
+            c_actions = (CEnv_Key_Value * num_actions)()
+
+            i = 0
 
             for k, v in action.items():
-                c_actions[i].key = bytes(k)
+                c_actions[i].key = bytes(k, encoding="ascii")
                 c_actions[i].value_type = c_int32(CENV_NUMPY_DTYPE_TO_VALUE_TYPE[v.dtype])
-                c_actions[i].value_buffer_size = c_int32(len(k))
-                c_actions[i].value_buffer = byref(k.data)
+                c_actions[i].value_buffer_size = c_int32(len(v))
+                c_actions[i].value_buffer = _put_value_buffer(v)
+
+                i += 1
 
         else:
             raise(Exception("Unrecognized action type! Supported are: int, np.array, Dict[np.array]"))
@@ -285,16 +314,28 @@ class CEnv(Env):
 
         return (observation, reward, terminated, truncated, info)
 
-    def reset(self, seed: Optional[int] = None, options: Optional[List[Any]] = None) -> Tuple[gym.core.ObsType, dict]:
-        if seed == None:
-            seed = 0
-
+    def reset(self, options: Optional[List[Any]] = None) -> Tuple[gym.core.ObsType, dict]:
         c_options = None
+        num_options = 0
 
         if options != None:
-            c_options = CGym_Option * len(options)
+            num_options = len(options)
 
-        ret = self.lib.cenv_reset(c_int32(seed), c_options, c_int32(0 if options == None else len(options)))
+            c_options = (CEnv_Option * num_options)()
+
+            i = 0
+
+            for k, v in options.items():
+                c_options[i].name = bytes(k, encoding="ascii")
+
+                value_type = CENV_PYTHON_TYPE_TO_VALUE_TYPE[type(v)]
+
+                c_options[i].value_type = c_int32(value_type)
+                c_options[i].value = CEnv_Value(CENV_VALUE_TYPE_TO_CTYPE[value_type](v))
+
+                i += 1
+
+        ret = self.lib.cenv_reset(c_options, c_int32(num_options))
         
         if ret != 0:
             raise(Exception("Non-zero error code!"))

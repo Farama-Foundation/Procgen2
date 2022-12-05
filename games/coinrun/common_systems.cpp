@@ -20,8 +20,8 @@ void System_Sprite_Render::update(float dt) {
 
             animation.t += dt;
 
-            int frames_advance = animation.t / animation.rate;
-            animation.t -= frames_advance * animation.rate; 
+            int frames_advance = animation.t * animation.rate;
+            animation.t -= frames_advance / animation.rate; 
                 
             animation.frame_index = (animation.frame_index + frames_advance) % animation.frames.size();
 
@@ -123,10 +123,10 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
     bool achieved_goal = false;
 
     // Parameters
-    const float max_jump = 15.0f;
-    const float gravity = 14.0f;
-    const float max_speed = 4.0f;
-    const float mix = 12.0f;
+    const float max_jump = 1.55f;
+    const float gravity = 0.2f;
+    const float max_speed = 0.5f;
+    const float mix = 0.2f;
     const float air_control = 0.15f;
 
     // Get tile map system
@@ -145,7 +145,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         const auto &collision = c.get_component<Component_Collision>(e);
 
-        float movement_x = (agent.action == 0 || agent.action == 1 || agent.action == 2) - (agent.action == 6 || agent.action == 7 || agent.action == 8);
+        float movement_x = (agent.action == 6 || agent.action == 7 || agent.action == 8) - (agent.action == 0 || agent.action == 1 || agent.action == 2);
         bool jump = (agent.action == 2 || agent.action == 5 || agent.action == 8);
         bool fallthrough = (agent.action == 0 || agent.action == 3 || agent.action == 6);
 
@@ -159,11 +159,6 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         if (jump && agent.on_ground)
             dynamics.velocity.y = -max_jump;
-        else if (fallthrough) {
-            // Set 1-2 tiles below to not collide
-            tilemap->set_no_collide(transform.position.x - 0.48f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
-            tilemap->set_no_collide(transform.position.x + 0.48f, tilemap->get_height() - 1 - static_cast<int>(transform.position.y + 0.5f));
-        }
 
         dynamics.velocity.y += gravity * dt;
         
@@ -180,10 +175,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
             return (id == wall_mid || id == wall_top ? full : (id == crate ? down_only : none));
-        }, dynamics.velocity.y);
-
-        // Update no collide mask (for fallthrough platform logic) given some large bounds to check around the agent
-        tilemap->update_no_collide(world_collision, Rectangle{ transform.position.x - 4.0f, transform.position.y - 4.0f, 8.0f, 8.0f });
+        }, fallthrough, dynamics.velocity.y * dt);
 
         // If was moved up, on ground
         Vector2 delta_position{ collision_data.first.x - world_collision.x, collision_data.first.y - world_collision.y };

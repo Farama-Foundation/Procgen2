@@ -127,7 +127,7 @@ CENV_API extern cenv_render_data render_data;
 // C ENV DEVELOPERS: IMPLEMENT THESE IN YOUR ENV!
 CENV_API int32_t cenv_get_env_version(); // Version of environment
 CENV_API int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options_size); // Make the environment
-CENV_API int32_t cenv_reset(int32_t seed, cenv_option* options, int32_t options_size); // Reset the environment
+CENV_API int32_t cenv_reset(cenv_option* options, int32_t options_size); // Reset the environment
 CENV_API int32_t cenv_step(cenv_key_value* actions, int32_t actions_size); // Step (update) the environment
 CENV_API int32_t cenv_render(); // Render the environment to a frame
 CENV_API void cenv_close(); // Close (delete) the environment (shutdown)
