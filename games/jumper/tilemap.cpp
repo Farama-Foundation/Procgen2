@@ -1,39 +1,28 @@
 #include "tilemap.h"
 
+#include "maze_generator.h"
+#include "room_generator.h"
+
 void System_Tilemap::init() {
-    id_to_textures.resize(num_ids);
+    id_to_textures.resize(3);
 
     // Load textures
-    id_to_textures[wall_top].resize(wall_themes.size());
-    id_to_textures[wall_mid].resize(wall_themes.size());
+    id_to_textures[wall_top].resize(4);
+    id_to_textures[wall_mid].resize(4);
 
-    for (int i = 0; i < wall_themes.size(); i++) {
-        id_to_textures[wall_top][i].load("assets/kenney/Ground/" + wall_themes[i] + "/" + to_lower(wall_themes[i]) + "Mid.png");
-        id_to_textures[wall_mid][i].load("assets/kenney/Ground/" + wall_themes[i] + "/" + to_lower(wall_themes[i]) + "Center.png");
-    }
+    id_to_textures[wall_top][0].load("assets/platformer/tileBlue_05.png");
+    id_to_textures[wall_top][1].load("assets/platformer/tileGreen_05.png");
+    id_to_textures[wall_top][2].load("assets/platformer/tileYellow_06.png");
+    id_to_textures[wall_top][3].load("assets/platformer/tileBrown_06.png");
 
-    id_to_textures[lava_top].resize(1);
-    id_to_textures[lava_top][0].load("assets/kenney/Tiles/lavaTop_low.png");
+    id_to_textures[wall_mid][0].load("assets/platformer/tileBlue_08.png");
+    id_to_textures[wall_mid][1].load("assets/platformer/tileGreen_08.png");
+    id_to_textures[wall_mid][2].load("assets/platformer/tileYellow_09.png");
+    id_to_textures[wall_mid][3].load("assets/platformer/tileBrown_09.png");
 
-    id_to_textures[lava_mid].resize(1);
-    id_to_textures[lava_mid][0].load("assets/kenney/Tiles/lava.png");
-
-    id_to_textures[crate].resize(crate_types.size());
-
-    for (int i = 0; i < crate_types.size(); i++)
-        id_to_textures[crate][i].load("assets/kenney/Tiles/" + crate_types[i] + ".png");
-
-    // Preload enemies
-    for (int i = 0; i < walking_enemies.size(); i++) {
-        manager_texture.get("assets/kenney/Enemies/" + walking_enemies[i] + ".png");
-        manager_texture.get("assets/kenney/Enemies/" + walking_enemies[i] + "_move.png");
-    }
-
-    manager_texture.get("assets/kenney/Enemies/sawHalf.png");
-    manager_texture.get("assets/kenney/Enemies/sawHalf_move.png");
-
-    // Pre-load coin
-    manager_texture.get("assets/kenney/Items/coinGold.png");
+    // Pre-load
+    manager_texture.get("assets/misc_assets/spikeMan_stand.png");
+    manager_texture.get("assets/misc_assets/carrot.png");
 }
 
 // Tile manipulation
@@ -49,57 +38,56 @@ void System_Tilemap::set_area_with_top(int x, int y, int width, int height, Tile
 }
 
 // Spawning helpers
-void System_Tilemap::spawn_enemy_saw(int x, int y) {
+void System_Tilemap::spawn_spike(int x, int y) {
     Entity e = c.create_entity();
 
     Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(map_height - 1 - y) + 0.5f };
 
-    Component_Animation animation;
-    animation.frames.resize(2);
-    animation.frames[0] = &manager_texture.get("assets/kenney/Enemies/sawHalf.png");
-    animation.frames[1] = &manager_texture.get("assets/kenney/Enemies/sawHalf_move.png");
-    animation.rate = 1.0f; // Every frame
+    Asset_Texture* texture = &manager_texture.get("assets/misc_assets/spikeMan_stand.png");
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f });
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = texture });
     c.add_component(e, Component_Hazard{});
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
-    c.add_component(e, animation);
 }
 
-void System_Tilemap::spawn_enemy_mob(int x, int y, std::mt19937 &rng) {
-    std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+bool System_Tilemap::is_space_on_ground(int x, int y) {
+    if (get(x, y) != empty)
+        return false;
 
-    Entity e = c.create_entity();
+    if (get(x, y + 1) != empty)
+        return false;
 
-    Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(map_height - 1 - y) + 0.5f };
+    int below_id = get(x, y - 1);
 
-    std::uniform_int_distribution<int> walking_enemy_dist(0, walking_enemies.size() - 1);
+    return below_id == wall_mid || below_id == out_of_bounds;
+}
 
-    int enemy_index = walking_enemy_dist(rng);
+bool System_Tilemap::is_top_wall(int x, int y) {
+    return get(x, y) == wall_mid && get(x, y + 1) == empty;
+}
 
-    Component_Animation animation;
-    animation.frames.resize(2);
-    animation.frames[0] = &manager_texture.get("assets/kenney/Enemies/" + walking_enemies[enemy_index] + ".png");
-    animation.frames[1] = &manager_texture.get("assets/kenney/Enemies/" + walking_enemies[enemy_index] + "_move.png");
-    animation.rate = 0.2f;
+bool System_Tilemap::is_left_wall(int x, int y) {
+    return get(x, y) == wall_mid && get(x + 1, y) == empty;
+}
 
-    c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f });
-    c.add_component(e, Component_Hazard{});
-    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.48f, 1.0f, 0.98f }});
-    c.add_component(e, Component_Mob_AI{ .velocity_x = 0.15f * ((dist01(rng) < 0.5f) * 2.0f - 1.0f) });
-    c.add_component(e, Component_Particles{ .particles = std::vector<Particle>(10), .offset{ 0.0f, 0.34f } });
-    c.add_component(e, animation);
+bool System_Tilemap::is_right_wall(int x, int y) {
+    return get(x, y) == wall_mid && get(x - 1, y) == empty;
 }
 
 // Main map generation
 void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
-    const int main_width = 64;
-    const int main_height = 64;
-    const float max_jump = 1.5f;
-    const float gravity = 0.2f;
-    const float max_speed = 0.5f;
+    int world_dim;
+
+    if (cfg.mode == hard_mode)
+        world_dim = 40;
+    else if (cfg.mode == memory_mode)
+        world_dim = 45;
+    else
+        world_dim = 20;
+
+    const int main_width = world_dim;
+    const int main_height = world_dim;
 
     this->map_width = main_width;
     this->map_height = main_height;
@@ -110,185 +98,158 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     // Clear
     std::fill(tile_ids.begin(), tile_ids.end(), empty);
 
-    // Initialize floors and walls
-    set_area(0, 0, main_width, 1, wall_top);
-    set_area(0, 0, 1, main_height, wall_mid);
-    set_area(main_width - 1, 0, 1, main_height, wall_mid);
-    set_area(0, main_height - 1, main_width, 1, wall_mid);
+    const int maze_scale = 3;
+    const int maze_dim = main_width / maze_scale;
+
+    // Generate maze with no dead ends
+    Maze_Generator maze_generator;
+    maze_generator.generate_maze_no_dead_ends(maze_dim, maze_dim, rng);
+
+    Room_Generator room_generator;
+    room_generator.init(main_width, main_height);
 
     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
-    std::uniform_int_distribution<int> crate_dist(0, crate_types.size() - 1);
 
-    std::uniform_int_distribution<int> difficulty_dist(1, 3);
+    for (int i = 0; i < tile_ids.size(); i++) {
+        int obj = maze_generator.grid[maze_generator.get_index((i / main_height) / maze_scale + 1, (i % main_height) / maze_scale + 1)];
 
-    int difficulty = difficulty_dist(rng);
+        float prob = obj == 1 ? 0.8f : 0.2f; // If is wall, higher probability
 
-    std::uniform_int_distribution<int> section_dist(difficulty, 2 * difficulty - 1);
+        tile_ids[i] = dist01(rng) < prob ? wall_mid : empty; // Wall or space
 
-    int num_sections = section_dist(rng);
-
-    int curr_x = 5;
-    int curr_y = 1;
-
-    int pit_thresh = difficulty;
-
-    std::uniform_int_distribution<int> danger_dist(0, 2);
-
-    int danger_type = danger_dist(rng);
-
-    int w = main_width;
-
-    float max_dxf = max_speed * 2.0f * max_jump / gravity;
-    float max_dyf = max_jump * max_jump / (2.0f * gravity);
-
-    // Cast to int
-    int max_dx = max_dxf - 0.5f;
-    int max_dy = max_dyf - 0.5f;
-
-    bool allow_monsters = !cfg.easy_mode;
-
-    for (int section = 0; section < num_sections; section++) {
-        if (curr_x + 15 >= w)
-            break;
-
-        int difficult_offset = difficulty / 3;
-
-        std::uniform_int_distribution<int> dy_dist(1 + difficult_offset, 4 + difficult_offset);
-
-        int dy = (cfg.allow_dy ? dy_dist(rng) : 0);
-
-        dy = std::min(dy, max_dy);
-
-        // Flip
-        if (curr_y >= 20 || (curr_y >= 5 && dist01(rng) < 0.5f))
-            dy *= -1;
-
-        std::uniform_int_distribution<int> dx_dist(3 + difficult_offset, 2 * difficulty + 2 + difficult_offset);
-
-        int dx = dx_dist(rng);
-
-        curr_y = std::max(1, curr_y + dy);
-
-        std::uniform_int_distribution<int> pit_dist(0, 19);
-
-        bool use_pit = cfg.allow_pit && (dx > 7) && (curr_y > 3) && (pit_dist(rng) >= pit_thresh);
-
-        std::uniform_int_distribution<int> dist3(1, 3);
-
-        if (use_pit) {
-            int x1 = dist3(rng);
-            int x2 = dist3(rng);
-            int pit_width = dx - x1 - x2;
-
-            if (pit_width > max_dx) {
-                pit_width = max_dx;
-                x2 = dx - x1 - pit_width;
-            }
-
-            set_area_with_top(curr_x, 0, x1, curr_y, wall_mid, wall_top);
-            set_area_with_top(curr_x + dx - x2, 0, x2, curr_y, wall_mid, wall_top);
-
-            std::uniform_int_distribution<int> lava_height_dist(1, curr_y - 3);
-
-            int lava_height = lava_height_dist(rng);
-
-            switch (danger_type) {
-            case 0:
-                set_area_with_top(curr_x + x1, 1, pit_width, lava_height, lava_mid, lava_top);
-
-                break;
-            case 1:
-                for (int i = 0; i < pit_width; i++)
-                    spawn_enemy_saw(curr_x + x1 + i, 1);
-
-                break;
-            case 2:
-                for (int i = 0; i < pit_width; i++)
-                    spawn_enemy_mob(curr_x + x1 + i, 1, rng);
-
-                break;
-            }
-
-            if (pit_width > 4) {
-                std::uniform_int_distribution<int> dist2(1, 2);
-
-                int x3, w1;
-
-                if (pit_width == 5) {
-                    x3 = dist2(rng);
-                    w1 = dist2(rng);
-                }
-                else if (pit_width == 6) {
-                    x3 = dist2(rng) + 1;
-                    w1 = dist2(rng);
-                }
-                else {
-                    x3 = dist2(rng) + 1;
-                    int x4 = dist2(rng) + 1;
-                    w1 = pit_width - x3 - x4;
-                }
-
-                set_area_with_top(curr_x + x1 + x3, curr_y - 1, w1, 1, wall_mid, wall_top);
-            }
-        }
-        else {
-            set_area_with_top(curr_x, 0, dx, curr_y, wall_mid, wall_top);
-
-            int ob1_x = -1;
-            int ob2_x = -1;
-
-            std::uniform_int_distribution<int> spawn_dist(0, 9);
-
-            if (spawn_dist(rng) < (2 * difficulty) && dx > 3) {
-                std::uniform_int_distribution<int> x_dist(1, dx - 2);
-
-                ob1_x = curr_x + x_dist(rng);
-
-                spawn_enemy_saw(ob1_x, curr_y);
-            }
-
-            if (cfg.allow_mobs && spawn_dist(rng) < difficulty && dx > 3 && max_dx >= 4) {
-                std::uniform_int_distribution<int> x_dist(1, dx - 2);
-
-                ob1_x = curr_x + x_dist(rng);
-
-                spawn_enemy_mob(ob1_x, curr_y, rng);
-            }
-
-             if (cfg.allow_crate) {
-                for (int i = 0; i < 2; i++) {
-                    std::uniform_int_distribution<int> x_dist(1, dx - 2);
-
-                    int crate_x = curr_x + x_dist(rng);
-
-                    if (dist01(rng) < 0.5f && ob1_x != crate_x && ob2_x != crate_x) {
-                        int pile_height = dist3(rng);
-
-                        for (int j = 0; j < pile_height; j++) {
-                            set(crate_x, curr_y + j, crate);
-                            crate_type_indices[curr_y + j + crate_x * map_height] = crate_dist(rng);
-                        }
-                    }
-                }
-            }
-        }
-
-        curr_x += dx;
+        room_generator.grid[i] = (tile_ids[i] == wall_mid ? 1 : 0);
     }
 
-    // Spawn the coin
-    Entity coin = c.create_entity();
+    for (int it = 0; it < 2; it++)
+        room_generator.update();
 
-    Vector2 pos = { static_cast<float>(curr_x) + 0.5f, static_cast<float>(map_height - 1 - curr_y) + 0.5f };
+    // Add border cells. needed for helping with solvability and proper rendering of bottommost floor tiles
+    for (int i = 0; i < main_width; i++) {
+        set(i, 0, wall_mid);
+        set(i, main_height - 1, wall_mid);
 
-    c.add_component(coin, Component_Transform{ .position{ pos } });
-    c.add_component(coin, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = &manager_texture.get("assets/kenney/Items/coinGold.png") });
-    c.add_component(coin, Component_Goal{});
-    c.add_component(coin, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+        room_generator.set(i, 0, 1);
+        room_generator.set(i, main_height - 1, 1);
+    }
 
-    set_area_with_top(curr_x, 0, 1, curr_y, wall_mid, wall_top);
+    for (int i = 0; i < main_height; i++) {
+        set(0, i, wall_mid);
+        set(main_width - 1, i, wall_mid);
 
-    set_area(curr_x + 1, 0, main_width - curr_x, main_height, wall_mid);
+        room_generator.set(0, i, 1);
+        room_generator.set(main_width - 1, i, 1);
+    }
+
+    std::unordered_set<int> best_room;
+    room_generator.find_best_room(best_room);
+
+    for (int i = 0; i < tile_ids.size(); i++)
+        tile_ids[i] = wall_mid;
+
+    std::vector<int> free_cells;
+
+    for (int i : best_room) {
+        tile_ids[i] = empty;
+        free_cells.push_back(i);
+    }
+
+    std::uniform_int_distribution<int> free_cell_dist(0, free_cells.size() - 1);
+
+    int goal_cell = free_cells[free_cell_dist(rng)];
+
+    std::vector<int> agent_candidates;
+
+    for (int x = 0; x < main_width; x++)
+        for (int y = 0; y < main_height; y++) {
+            int i = y + main_height * x;
+
+            if (is_space_on_ground(x, y) && i != goal_cell)
+                agent_candidates.push_back(i);
+        }
+
+    std::uniform_int_distribution<int> agent_cell_dist(0, agent_candidates.size() - 1);
+
+    int agent_cell = agent_candidates[agent_cell_dist(rng)];
+
+    std::vector<int> goal_path;
+    room_generator.find_path(agent_cell, goal_cell, goal_path);
+
+    bool should_prune = cfg.mode != memory_mode;
+
+    if (should_prune) {
+        std::unordered_set<int> wide_path;
+        wide_path.insert(goal_path.begin(), goal_path.end());
+        room_generator.expand_room(wide_path, 4);
+
+        for (int i = 0; i < tile_ids.size(); i++)
+            tile_ids[i] = wall_mid;
+
+        for (int i : wide_path)
+            tile_ids[i] = empty;
+    }
+
+    // Spawn the goal
+    int goal_x = goal_cell / main_height;
+    int goal_y = goal_cell % main_height;
+
+    Entity goal = c.create_entity();
+
+    Vector2 pos = { static_cast<float>(goal_x) + 0.5f, static_cast<float>(map_height - 1 - goal_y) + 0.5f };
+
+    c.add_component(goal, Component_Transform{ .position{ pos } });
+    c.add_component(goal, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = &manager_texture.get("assets/misc_assets/carrot.png") });
+    c.add_component(goal, Component_Goal{});
+    c.add_component(goal, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+
+    float spike_prob = cfg.mode == memory_mode ? 0.0f : 0.2f;
+
+    for (int x = 0; x < main_width; x++)
+        for (int y = 0; y < main_height; y++) {
+            if (is_space_on_ground(x, y) && is_space_on_ground(x - 1, y) && is_space_on_ground(x + 1, y)) {
+                if (dist01(rng) < spike_prob)
+                    set(x, y, spike);
+            }
+        }
+
+    std::uniform_int_distribution<int> dist3(0, 2);
+
+    // We prevent log vertical walls to improve solvability
+    for (int x = 0; x < main_width; x++)
+        for (int y = 0; y < main_height; y++) {
+            if (is_left_wall(x, y) && is_left_wall(x, y + 1) && is_left_wall(x, y + 2))
+                set(x, y + dist3(rng), empty);
+
+            if (is_right_wall(x, y) && is_right_wall(x, y + 1) && is_right_wall(x, y + 2))
+                set(x, y + dist3(rng), empty);
+        }
+
+    Vector2 agent_pos{ static_cast<float>(static_cast<int>(agent_cell / main_height)) + 0.5f, static_cast<float>(agent_cell % main_height) };
+
+    // Spawn the player (agent)
+    Entity agent = c.create_entity();
+
+    c.add_component(agent, Component_Transform{ .position = agent_pos });
+    c.add_component(agent, Component_Collision{ .bounds{ -0.5f, -1.0f, 1.0f, 1.0f } });
+    c.add_component(agent, Component_Dynamics{});
+    c.add_component(agent, Component_Agent{});
+
+    std::vector<int> spike_cells;
+
+    for (int i = 0; i < tile_ids.size(); i++) {
+        if (tile_ids[i] == spike) {
+            tile_ids[i] = empty;
+
+            if (i != agent_cell && i != goal_cell) // Avoid placing spike in agent or goal position
+                spawn_spike(i / main_height, i % main_height);
+        }
+    }
+
+    // Set tops
+    for (int x = 0; x < main_width; x++)
+        for (int y = 0; y < main_height; y++) {
+            if (is_top_wall(x, y))
+                set(x, y, wall_top);
+        }
 }
 
 void System_Tilemap::render(int theme) {
@@ -304,17 +265,13 @@ void System_Tilemap::render(int theme) {
         for (int x = lower_x; x <= upper_x; x++) {
             Tile_ID id = get(x, map_height - 1 - y);
 
-            if (id == 0) // Empty
+            if (id == empty)
                 continue;
 
-            Asset_Texture* tex;
+            if (id >= id_to_textures.size() || id_to_textures[id].empty())
+                continue;
 
-            if (id == wall_mid || id == wall_top)
-                tex = &id_to_textures[id][theme];
-            else if (id == lava_mid || id == lava_top)
-                tex = &id_to_textures[id][0];
-            else if (id == crate)
-                tex = &id_to_textures[id][crate_type_indices[map_height - 1 - y + x * map_height]];
+            Asset_Texture* tex = &id_to_textures[id][theme];
 
             gr.render_texture(tex, (Vector2){ x * unit_to_pixels, y * unit_to_pixels }, unit_to_pixels / tex->width);
         }

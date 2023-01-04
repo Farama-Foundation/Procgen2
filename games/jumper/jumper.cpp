@@ -47,7 +47,6 @@ float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it t
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
-std::shared_ptr<System_Mob_AI> mob_ai;
 std::shared_ptr<System_Hazard> hazard;
 std::shared_ptr<System_Goal> goal;
 std::shared_ptr<System_Agent> agent;
@@ -113,8 +112,6 @@ std::vector<Asset_Texture> background_textures;
 
 int current_background_index = 0;
 float current_background_offset_x = 0.0f;
-
-int current_agent_theme = 0;
 
 // Forward declarations
 void render_game(bool is_obs);
@@ -242,7 +239,6 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Animation>();
     c.register_component<Component_Hazard>();
     c.register_component<Component_Goal>();
-    c.register_component<Component_Mob_AI>();
     c.register_component<Component_Agent>(); // Player
     c.register_component<Component_Particles>();
 
@@ -258,12 +254,6 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.set_system_signature<System_Tilemap>(tilemap_signature);
 
     tilemap->init();
-
-    // Mob AI setup
-    mob_ai = c.register_system<System_Mob_AI>();
-    Signature mob_ai_signature;
-    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mobs
-    c.set_system_signature<System_Mob_AI>(mob_ai_signature);
 
     // Hazard system setup
     hazard = c.register_system<System_Hazard>();
@@ -356,7 +346,6 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Sub-steps
     for (int ss = 0; ss < sub_steps; ss++) {
         // Update systems
-        mob_ai->update(dt);
         std::pair<bool, bool> result = agent->update(dt, hazard, goal, action);
         particles->update(dt);
         sprite_render->update(dt);
@@ -432,6 +421,10 @@ void cenv_close() {
     
     // ---------------------- Game ----------------------
 
+    // Explcit destruct before renderer
+    background_textures.clear();
+    manager_texture.clear();
+
     SDL_DestroyRenderer(window_renderer);
     SDL_DestroyRenderer(obs_renderer);
 
@@ -466,7 +459,7 @@ void render_game(bool is_obs) {
     tilemap->render(current_map_theme);
     particles->render();
     sprite_render->render(positive_z);
-    agent->render(current_agent_theme);
+    agent->render();
 }
 
 void reset() {
@@ -483,22 +476,11 @@ void reset() {
 
     current_background_offset_x = dist01(rng);
 
-    // Spawn the player (agent)
-    Entity e = c.create_entity();
-
-    Vector2 pos{ 1.5f, tilemap->get_height() - 1 - 1.0f };
-
-    c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -1.0f, 1.0f, 1.0f } });
-    c.add_component(e, Component_Dynamics{});
-    c.add_component(e, Component_Agent{});
-
     // Determine themes
-    std::uniform_int_distribution<int> agent_theme_dist(0, agent_themes.size() - 1);
-
-    current_agent_theme = agent_theme_dist(rng);
-
-    std::uniform_int_distribution<int> map_theme_dist(0, wall_themes.size() - 1);
+    std::uniform_int_distribution<int> map_theme_dist(0, 3); // 4 themes
 
     current_map_theme = map_theme_dist(rng);
+
+    // Clear before next render to remove now destroyed entities from previous episode
+    sprite_render->clear_render();
 }

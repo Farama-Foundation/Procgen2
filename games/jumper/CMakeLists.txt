@@ -35,6 +35,8 @@ set(SOURCES
     "${SOURCE_PATH}/renderer.cpp"
     "${SOURCE_PATH}/common_assets.cpp"
     "${SOURCE_PATH}/common_systems.cpp"
+    "${SOURCE_PATH}/maze_generator.cpp"
+    "${SOURCE_PATH}/room_generator.cpp"
     "${SOURCE_PATH}/tilemap.cpp"
 )
 

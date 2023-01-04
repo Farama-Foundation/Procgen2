@@ -62,48 +62,6 @@ void System_Sprite_Render::render(Sprite_Render_Mode mode) {
     }
 }
 
-void System_Mob_AI::update(float dt) {
-    // Get tile map system
-    std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
-
-    for (auto const &e : entities) {
-        auto &mob_ai = c.get_component<Component_Mob_AI>(e);
-
-        auto &transform = c.get_component<Component_Transform>(e);
-
-        // Move
-        transform.position.x += mob_ai.velocity_x * dt;
-
-        Rectangle wall_sensor{ transform.position.x - 0.5f, transform.position.y - 0.6f, 1.0f, 0.5f };
-        Rectangle floor_sensor{ transform.position.x - 0.5f, transform.position.y + 0.6f, 1.0f, 0.5f };
-
-        std::pair<Vector2, bool> wall_collision_data = tilemap->get_collision(wall_sensor, [](Tile_ID id) -> Collision_Type {
-            return (id == wall_mid || id == wall_top ? full : none);
-        });
-
-        std::pair<Vector2, bool> floor_collision_data = tilemap->get_collision(floor_sensor, [](Tile_ID id) -> Collision_Type {
-            return (id == empty ? full : none);
-        });
-
-        float new_x = wall_collision_data.first.x + 0.5f;
-
-        if (floor_collision_data.second)
-            new_x = floor_collision_data.first.x + 0.5f;
-
-        float delta_x = new_x - transform.position.x;
-
-        transform.position.x = new_x;
-
-        if (wall_collision_data.second || floor_collision_data.second)
-            mob_ai.velocity_x *= -1.0f; // Rebound
-
-        // Flip sprite if needed
-        auto &sprite = c.get_component<Component_Sprite>(e);
-
-        sprite.flip_x = mob_ai.velocity_x > 0.0f;
-    }
-}
-
 void System_Agent::init() {
     stand_texture.load("assets/misc_assets/bunny2_ready.png");
     jump_texture.load("assets/misc_assets/bunny2_jump.png");
@@ -167,7 +125,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
         Rectangle world_collision{ transform.position.x + collision.bounds.x, transform.position.y + collision.bounds.y, collision.bounds.width, collision.bounds.height };
 
         std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
-            return (id == wall_mid || id == wall_top ? full : (id == crate ? down_only : none));
+            return (id == wall_mid || id == wall_top ? full : none);
         }, fallthrough, dynamics.velocity.y * dt);
 
         // If was moved up, on ground
@@ -203,14 +161,6 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
                 break;
             }
         }
-
-        // Lava
-        std::pair<Vector2, bool> lava_collision = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
-            return (id == lava_mid || id == lava_top ? full : none);
-        });
-
-        if (lava_collision.second)
-            alive = false;
 
         // Go through all goals
         for (auto const &g : goal->get_entities()) {
@@ -264,7 +214,7 @@ void System_Agent::render() {
         else
             texture = &walk1_texture;
 
-        Vector2 position{ transform.position.x - 0.5f, transform.position.y - 2.0f };
+        Vector2 position{ transform.position.x - 0.5f, transform.position.y - 1.0f };
 
         gr.render_texture(texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, unit_to_pixels / texture->width, 1.0f, !agent.face_forward);
     }

@@ -34,4 +34,8 @@ public:
 
         assets.erase(assets.find(name));
     }
+
+    void clear() {
+        assets.clear();
+    }
 };

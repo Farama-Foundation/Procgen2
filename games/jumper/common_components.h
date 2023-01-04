@@ -45,11 +45,6 @@ struct Component_Animation { // Requires a Component_Sprite as well in order to 
 struct Component_Hazard {};
 struct Component_Goal {};
 
-// Game logic
-struct Component_Mob_AI {
-    float velocity_x = 0.15f;
-};
-
 struct Component_Agent {
     int action = 0;
     bool on_ground = false;

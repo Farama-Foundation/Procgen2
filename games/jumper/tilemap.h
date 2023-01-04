@@ -10,13 +10,18 @@
 #include <random>
 #include <functional>
 
+enum Distribution_Mode {
+    easy_mode,
+    hard_mode,
+    memory_mode
+};
+
 enum Tile_ID {
+    out_of_bounds = -1,
     empty = 0,
     wall_top,
     wall_mid,
-    lava_top,
-    lava_mid,
-    crate,
+    spike,
     num_ids
 };
 
@@ -26,10 +31,6 @@ enum Collision_Type {
     down_only
 };
 
-static const std::vector<std::string> wall_themes = { "Dirt", "Grass", "Planet", "Sand", "Snow", "Stone" };
-static const std::vector<std::string> walking_enemies = { "slimeBlock", "slimePurple", "slimeBlue", "slimeGreen", "mouse", "snail", "ladybug", "wormGreen", "wormPink" };
-static const std::vector<std::string> crate_types = { "boxCrate", "boxCrate_double", "boxCrate_single", "boxCrate_warning" };
-
 // Tile map system
 class System_Tilemap : public System {
 public:
@@ -38,11 +39,7 @@ public:
     };
 
     struct Config {
-        bool easy_mode = false;
-        bool allow_pit = true;
-        bool allow_crate = true;
-        bool allow_dy = true;
-        bool allow_mobs = true;
+        Distribution_Mode mode = easy_mode;
     };
 
 private:
@@ -53,8 +50,12 @@ private:
     std::vector<Tile_ID> tile_ids;
     std::vector<int> crate_type_indices;
 
-    void spawn_enemy_saw(int x, int y);
-    void spawn_enemy_mob(int x, int y, std::mt19937 &rng);
+    void spawn_spike(int x, int y);
+
+    bool is_space_on_ground(int x, int y);
+    bool is_top_wall(int x, int y);
+    bool is_left_wall(int x, int y);
+    bool is_right_wall(int x, int y);
 
 public:
     // Initialize the tilemap
@@ -78,7 +79,7 @@ public:
     // Get a tile
     Tile_ID get(int x, int y) {
         if (x < 0 || y < 0 || x >= map_width || y >= map_height)
-            return wall_mid; // Out of bounds is a wall
+            return out_of_bounds; // Out of bounds is a wall
 
         return tile_ids[y + x * map_height];
     }
