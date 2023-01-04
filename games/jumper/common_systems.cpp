@@ -74,11 +74,11 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
     bool achieved_goal = false;
 
     // Parameters
-    const float max_jump = 1.0f;
-    const float gravity = 0.2f;
+    const float max_jump = 0.92f;
+    const float gravity = 0.1f;
     const float max_speed = 0.5f;
     const float mix = 0.2f;
-    const float air_control = 0.15f;
+    const float air_control = 1.0f;
     const float jump_cooldown = 3.0f;
 
     // Get tile map system
@@ -153,6 +153,10 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         if (delta_position.x != 0.0f)
             dynamics.velocity.x = 0.0f;
+
+        // If hit ceiling
+        if (delta_position.y > 0.0f && collision_data.second)
+            dynamics.velocity.y = 0.0f;
         
         if (agent.on_ground)
             dynamics.velocity.y = 0.0f;

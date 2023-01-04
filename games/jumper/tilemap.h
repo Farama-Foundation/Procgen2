@@ -39,7 +39,7 @@ public:
     };
 
     struct Config {
-        Distribution_Mode mode = easy_mode;
+        Distribution_Mode mode = hard_mode;
     };
 
 private:

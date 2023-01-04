@@ -223,7 +223,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
                 set(x, y + dist3(rng), empty);
         }
 
-    Vector2 agent_pos{ static_cast<float>(static_cast<int>(agent_cell / main_height)) + 0.5f, static_cast<float>(agent_cell % main_height) };
+    Vector2 agent_pos{ static_cast<float>(static_cast<int>(agent_cell / main_height)) + 0.5f, static_cast<float>(main_height - 1 - (agent_cell % main_height)) };
 
     // Spawn the player (agent)
     Entity agent = c.create_entity();
