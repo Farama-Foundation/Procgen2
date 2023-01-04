@@ -38,7 +38,7 @@ public:
     }
 
     int get(int x, int y) const {
-        if (x < 1 || y < 1 || x >= array_width - 1 || y >= array_height - 1)
+        if (x < 0 || y < 0 || x >= array_width || y >= array_height)
             return 1; // Out of bounds is wall
 
         return grid[get_index(x, y)];

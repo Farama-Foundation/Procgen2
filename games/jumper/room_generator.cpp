@@ -34,7 +34,6 @@ void Room_Generator::update() {
 
     grid = next_cells;
 
-
     // Print maze
     for (int y = 0; y < grid_height; y++) {
         for (int x = 0; x < grid_width; x++) {

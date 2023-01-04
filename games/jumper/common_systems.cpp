@@ -74,11 +74,12 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
     bool achieved_goal = false;
 
     // Parameters
-    const float max_jump = 1.55f;
+    const float max_jump = 1.0f;
     const float gravity = 0.2f;
     const float max_speed = 0.5f;
     const float mix = 0.2f;
     const float air_control = 0.15f;
+    const float jump_cooldown = 3.0f;
 
     // Get tile map system
     std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
@@ -108,8 +109,17 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
         if (std::abs(dynamics.velocity.x) < mix_x * max_speed * dt)
             dynamics.velocity.x = 0.0f;
 
-        if (jump && agent.on_ground)
+        if (agent.on_ground)
+            agent.jumps_left = 2;
+
+        if (jump && agent.jumps_left > 0 && agent.jump_timer == 0.0f) {
             dynamics.velocity.y = -max_jump;
+            agent.jumps_left--;
+            agent.jump_timer = jump_cooldown;
+        }
+
+        if (agent.jump_timer > 0.0f)
+            agent.jump_timer = std::max(0.0f, agent.jump_timer - dt);
 
         dynamics.velocity.y += gravity * dt;
         
@@ -205,18 +215,34 @@ void System_Agent::render() {
         // Select the correct texture
         Asset_Texture* texture;
 
-        if (std::abs(dynamics.velocity.x) < 0.01f && agent.on_ground)
+        // Additional offsets needed since texture sizes different between animation frames
+        float agent_scale = 1.0f;
+        Vector2 agent_offset{ 0.0f, 0.0f };
+
+        if (std::abs(dynamics.velocity.x) < 0.01f && agent.on_ground) {
             texture = &stand_texture;
-        else if (!agent.on_ground) 
+            agent_scale = 0.5f;
+            agent_offset = { 0.0f, 0.2f };
+        }
+        else if (!agent.on_ground) {
             texture = &jump_texture;
-        else if (agent.t > 0.5f)
+            agent_scale = 0.6f;
+            agent_offset = { -0.05f, 0.25f };
+        }
+        else if (agent.t > 0.5f) {
             texture = &walk2_texture;
-        else
+            agent_scale = 0.5f;
+            agent_offset = { 0.0f, 0.2f };
+        }
+        else {
             texture = &walk1_texture;
+            agent_scale = 0.5f;
+            agent_offset = { 0.0f, 0.2f };
+        }
 
-        Vector2 position{ transform.position.x - 0.5f, transform.position.y - 1.0f };
+        Vector2 position{ transform.position.x - 0.25f, transform.position.y - 1.0f };
 
-        gr.render_texture(texture, (Vector2){ position.x * unit_to_pixels, position.y * unit_to_pixels }, unit_to_pixels / texture->width, 1.0f, !agent.face_forward);
+        gr.render_texture(texture, (Vector2){ (position.x + agent_offset.x) * unit_to_pixels, (position.y + agent_offset.y) * unit_to_pixels }, unit_to_pixels / texture->width * agent_scale, 1.0f, !agent.face_forward);
     }
 }
 

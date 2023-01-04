@@ -79,7 +79,7 @@ public:
     // Get a tile
     Tile_ID get(int x, int y) {
         if (x < 0 || y < 0 || x >= map_width || y >= map_height)
-            return out_of_bounds; // Out of bounds is a wall
+            return wall_mid; // Out of bounds is a wall
 
         return tile_ids[y + x * map_height];
     }

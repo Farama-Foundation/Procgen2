@@ -46,9 +46,9 @@ void System_Tilemap::spawn_spike(int x, int y) {
     Asset_Texture* texture = &manager_texture.get("assets/misc_assets/spikeMan_stand.png");
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = texture });
+    c.add_component(e, Component_Sprite{ .position{ -0.25f, -0.25f }, .scale=0.4f, .z = 1.0f, .texture = texture });
     c.add_component(e, Component_Hazard{});
-    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+    c.add_component(e, Component_Collision{ .bounds{ -0.25f, -0.25f, 0.5f, 0.5f }});
 }
 
 bool System_Tilemap::is_space_on_ground(int x, int y) {
@@ -229,7 +229,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     Entity agent = c.create_entity();
 
     c.add_component(agent, Component_Transform{ .position = agent_pos });
-    c.add_component(agent, Component_Collision{ .bounds{ -0.5f, -1.0f, 1.0f, 1.0f } });
+    c.add_component(agent, Component_Collision{ .bounds{ -0.25f, -0.8f, 0.5f, 0.8f } });
     c.add_component(agent, Component_Dynamics{});
     c.add_component(agent, Component_Agent{});
 

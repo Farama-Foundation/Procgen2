@@ -54,6 +54,9 @@ struct Component_Agent {
     // Agent-specific animation
     float rate = 0.1f;
     float t = 0.0f;
+
+    float jump_timer = 0.0f;
+    int jumps_left = 2;
 };
 
 struct Particle {
