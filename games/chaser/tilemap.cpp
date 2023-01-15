@@ -4,21 +4,12 @@
 #include "room_generator.h"
 
 void System_Tilemap::init() {
-    id_to_textures.resize(2);
+    id_to_textures.resize(1);
 
     // Load textures
-    id_to_textures[wall_top].resize(4);
-    id_to_textures[wall_mid].resize(4);
+    id_to_textures[wall].resize(1);
 
-    id_to_textures[wall_top][0].load("assets/platformer/tileBlue_05.png");
-    id_to_textures[wall_top][1].load("assets/platformer/tileGreen_05.png");
-    id_to_textures[wall_top][2].load("assets/platformer/tileYellow_06.png");
-    id_to_textures[wall_top][3].load("assets/platformer/tileBrown_06.png");
-
-    id_to_textures[wall_mid][0].load("assets/platformer/tileBlue_08.png");
-    id_to_textures[wall_mid][1].load("assets/platformer/tileGreen_08.png");
-    id_to_textures[wall_mid][2].load("assets/platformer/tileYellow_09.png");
-    id_to_textures[wall_mid][3].load("assets/platformer/tileBrown_09.png");
+    id_to_textures[wall][0].load("assets/misc_assets/tileStone_slope.png");
 
     // Pre-load
     manager_texture.get("assets/misc_assets/spikeMan_stand.png");
@@ -274,7 +265,7 @@ void System_Tilemap::render(int theme) {
         }
 }
 
-std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, bool fallthrough, float step_y) {
+std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func) {
     bool collided = false;
 
     int lower_x = std::floor(rectangle.x);
