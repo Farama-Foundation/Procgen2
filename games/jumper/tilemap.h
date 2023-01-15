@@ -48,7 +48,6 @@ private:
     std::vector<std::vector<Asset_Texture>> id_to_textures;
 
     std::vector<Tile_ID> tile_ids;
-    std::vector<int> crate_type_indices;
 
     void spawn_spike(int x, int y);
 

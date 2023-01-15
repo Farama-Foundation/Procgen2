@@ -26,13 +26,6 @@ public:
     void render(Sprite_Render_Mode mode);
 };
 
-// --------------------- Mob AI --------------------
-
-class System_Mob_AI : public System {
-public:
-    void update(float dt);
-};
-
 // -------------------- Hazards --------------------
 
 // Empty mostly, since just need it to collect hazards for agent system

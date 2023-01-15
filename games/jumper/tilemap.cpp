@@ -93,7 +93,6 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     this->map_height = main_height;
 
     tile_ids.resize(map_width * map_height);
-    crate_type_indices.resize(tile_ids.size());
 
     // Clear
     std::fill(tile_ids.begin(), tile_ids.end(), empty);
@@ -232,8 +231,6 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     c.add_component(agent, Component_Collision{ .bounds{ -0.25f, -0.8f, 0.5f, 0.8f } });
     c.add_component(agent, Component_Dynamics{});
     c.add_component(agent, Component_Agent{});
-
-    std::vector<int> spike_cells;
 
     for (int i = 0; i < tile_ids.size(); i++) {
         if (tile_ids[i] == spike) {
