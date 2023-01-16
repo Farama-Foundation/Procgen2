@@ -48,9 +48,7 @@ float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it t
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
 std::shared_ptr<System_Hazard> hazard;
-std::shared_ptr<System_Goal> goal;
 std::shared_ptr<System_Agent> agent;
-std::shared_ptr<System_Particles> particles;
 
 System_Tilemap::Config tilemap_config;
 int current_map_theme = 0;
@@ -198,9 +196,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Sprite>();
     c.register_component<Component_Animation>();
     c.register_component<Component_Hazard>();
-    c.register_component<Component_Goal>();
     c.register_component<Component_Agent>(); // Player
-    c.register_component<Component_Particles>();
 
     // Sprite rendering system
     sprite_render = c.register_system<System_Sprite_Render>();
@@ -221,12 +217,6 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     hazard_signature.set(c.get_component_type<Component_Hazard>()); // Operate only on hazards
     c.set_system_signature<System_Hazard>(hazard_signature);
 
-    // Goal system setup
-    goal = c.register_system<System_Goal>();
-    Signature goal_signature;
-    goal_signature.set(c.get_component_type<Component_Goal>()); // Operate only on goals
-    c.set_system_signature<System_Goal>(goal_signature);
-
     // Agent system setup
     agent = c.register_system<System_Agent>();
     Signature agent_signature;
@@ -234,14 +224,6 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.set_system_signature<System_Agent>(agent_signature);
 
     agent->init();
-
-    // Particle system setup
-    particles = c.register_system<System_Particles>();
-    Signature particles_signature;
-    particles_signature.set(c.get_component_type<Component_Particles>()); // Operate only on particles
-    c.set_system_signature<System_Particles>(particles_signature);
-
-    particles->init();
 
     // Load backgrounds
     background_textures.resize(background_names.size());
@@ -306,13 +288,12 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Sub-steps
     for (int ss = 0; ss < sub_steps; ss++) {
         // Update systems
-        std::pair<bool, bool> result = agent->update(dt, hazard, goal, action);
-        particles->update(dt);
+        bool alive = agent->update(dt, action);
         sprite_render->update(dt);
 
-        step_data.reward.f = result.second * 10.0f;
+        step_data.reward.f = (!alive) * -10.0f;
 
-        step_data.terminated = !result.first || result.second;
+        step_data.terminated = !alive;
         step_data.truncated = false;
 
         if (step_data.terminated)
@@ -417,7 +398,6 @@ void render_game(bool is_obs) {
 
     sprite_render->render(negative_z);
     tilemap->render(current_map_theme);
-    particles->render();
     sprite_render->render(positive_z);
     agent->render();
 }

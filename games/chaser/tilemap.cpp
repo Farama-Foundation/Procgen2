@@ -4,7 +4,7 @@
 #include "room_generator.h"
 
 void System_Tilemap::init() {
-    id_to_textures.resize(1);
+    id_to_textures.resize(num_ids);
 
     // Load textures
     id_to_textures[wall].resize(1);
@@ -12,8 +12,8 @@ void System_Tilemap::init() {
     id_to_textures[wall][0].load("assets/misc_assets/tileStone_slope.png");
 
     // Pre-load
-    manager_texture.get("assets/misc_assets/spikeMan_stand.png");
-    manager_texture.get("assets/misc_assets/carrot.png");
+    manager_texture.get("assets/misc_assets/yellowCrystal.png");
+    manager_texture.get("assets/misc_assets/enemySpikey_1b.png");
 }
 
 // Tile manipulation
@@ -56,7 +56,7 @@ void System_Tilemap::spawn_egg(int tile_index) {
     c.add_component(e, Component_Transform{ .position{ pos } });
     c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=0.4f, .texture = texture });
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
-
+    c.add_component(e, Component_Mob_AI{});
 }
 
 // Main map generation

@@ -4,7 +4,7 @@
 #include "room_generator.h"
 
 void System_Tilemap::init() {
-    id_to_textures.resize(2);
+    id_to_textures.resize(num_ids);
 
     // Load textures
     id_to_textures[wall_top].resize(4);

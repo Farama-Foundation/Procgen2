@@ -40,14 +40,10 @@ public:
     }
 };
 
-// -------------------- Goals --------------------
-
-// Empty mostly, since just need it to collect goals for agent system
-class System_Goal : public System {
+// Enemy controller
+class System_Mob_AI : public System {
 public:
-    std::unordered_set<Entity> &get_entities() {
-        return entities;
-    }
+    void update(float dt);
 };
 
 // --------------------- Player --------------------
@@ -55,28 +51,12 @@ public:
 class System_Agent : public System {
 private:
     // Agent textures
-    Asset_Texture stand_texture;
-    Asset_Texture jump_texture;
-    Asset_Texture walk1_texture;
-    Asset_Texture walk2_texture;
+    Asset_Texture agent_texture;
 
 public:
     void init(); // Needs to load sprites
 
-    // Returns alive status (false if touched hazard), and whether touched a goal (carrot)
-    std::pair<bool, bool> update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
-    void render();
-};
-
-// ------------------- Particles ------------------
-
-class System_Particles : public System {
-private:
-    Asset_Texture particle_texture;
-
-public:
-    void init(); // Loads sprites
-    
-    void update(float dt);
+    // Returns alive status
+    bool update(float dt, int action);
     void render();
 };
