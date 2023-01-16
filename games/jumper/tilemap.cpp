@@ -60,7 +60,7 @@ bool System_Tilemap::is_space_on_ground(int x, int y) {
 
     int below_id = get(x, y - 1);
 
-    return below_id == wall_mid || below_id == out_of_bounds;
+    return below_id == wall_mid || below_id == wall_top;
 }
 
 bool System_Tilemap::is_top_wall(int x, int y) {
@@ -212,7 +212,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
 
     std::uniform_int_distribution<int> dist3(0, 2);
 
-    // We prevent log vertical walls to improve solvability
+    // We prevent long vertical walls to improve solvability
     for (int x = 0; x < main_width; x++)
         for (int y = 0; y < main_height; y++) {
             if (is_left_wall(x, y) && is_left_wall(x, y + 1) && is_left_wall(x, y + 2))

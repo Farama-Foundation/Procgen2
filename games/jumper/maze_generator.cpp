@@ -10,16 +10,26 @@ struct Wall {
     int y2;
 };
 
-std::array<int, 4> Maze_Generator::get_neighbor_indices(int x, int y) const {
-    std::array<int, 4> neighbors;
+std::vector<int> Maze_Generator::get_neighbor_indices(int x, int y) const {
+    std::vector<int> neighbors;
 
-    int index = 0;
+    for (int dx = -1; dx <= 1; dx += 2) {
+        int nx = x + dx;
 
-    for (int dx = -1; dx <= 1; dx += 2)
-        neighbors[index++] = get_index(x + dx, y);
+        if (nx < 0 || nx >= array_width)
+            continue;
 
-    for (int dy = -1; dy <= 1; dy += 2)
-        neighbors[index++] = get_index(x, y + dy);
+        neighbors.push_back(get_index(nx, y));
+    }
+
+    for (int dy = -1; dy <= 1; dy += 2) {
+        int ny = x + dy;
+
+        if (ny < 0 || ny >= array_width)
+            continue;
+
+        neighbors.push_back(get_index(x, ny));
+    }
 
     return neighbors;
 }
@@ -132,11 +142,11 @@ void Maze_Generator::generate_maze_no_dead_ends(int maze_width, int maze_height,
 
     for (int i = 0; i < array_size; i++) {
         if (grid[i] == 0) { // Space
-            std::array<int, 4> neighbors = get_neighbor_indices(i / array_height, i % array_height);
+            std::vector<int> neighbors = get_neighbor_indices(i / array_height, i % array_height);
 
             int num_adjacent_spaces = 0;
 
-            for (int n = 0; n < 4; n++) {
+            for (int n = 0; n < neighbors.size(); n++) {
                 if (grid[neighbors[n]] == 0) // Space
                     num_adjacent_spaces++;
             }
@@ -144,7 +154,7 @@ void Maze_Generator::generate_maze_no_dead_ends(int maze_width, int maze_height,
             if (num_adjacent_spaces == 1) {
                 int num_adjacent_walls = 0;
 
-                for (int n = 0; n < 4; n++) {
+                for (int n = 0; n < neighbors.size(); n++) {
                     if (grid[neighbors[n]] == 1) // Wall
                         num_adjacent_walls++;
                 }

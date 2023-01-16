@@ -45,7 +45,7 @@ public:
     }
 
     // Van Neumann neighborhood
-    std::array<int, 4> get_neighbor_indices(int x, int y) const;
+    std::vector<int> get_neighbor_indices(int x, int y) const;
 
     // Generators
     void generate_maze(int maze_width, int maze_height, std::mt19937 &rng);
