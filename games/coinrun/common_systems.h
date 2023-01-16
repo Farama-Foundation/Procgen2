@@ -24,6 +24,10 @@ private:
 public:
     void update(float dt);
     void render(Sprite_Render_Mode mode);
+
+    void clear_render() {
+        render_entities.clear();
+    }
 };
 
 // --------------------- Mob AI --------------------

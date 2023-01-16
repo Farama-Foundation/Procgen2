@@ -501,4 +501,7 @@ void reset() {
     std::uniform_int_distribution<int> map_theme_dist(0, wall_themes.size() - 1);
 
     current_map_theme = map_theme_dist(rng);
+
+    // Clear before next render to remove now destroyed entities from previous episode
+    sprite_render->clear_render();
 }
