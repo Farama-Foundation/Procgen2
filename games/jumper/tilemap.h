@@ -27,8 +27,7 @@ enum Tile_ID {
 
 enum Collision_Type {
     none = 0,
-    full,
-    down_only
+    full
 };
 
 // Tile map system
@@ -86,7 +85,7 @@ public:
     void render(int theme);
 
     // General collision detection, returns new rectangle position and a collision flag
-    std::pair<Vector2, bool> get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, bool fallthrough = false, float step_y = 0.0f);
+    std::pair<Vector2, bool> get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func);
 
     int get_width() const {
         return map_width;

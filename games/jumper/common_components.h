@@ -33,14 +33,6 @@ struct Component_Sprite {
     Asset_Texture* texture = nullptr;
 };
 
-struct Component_Animation { // Requires a Component_Sprite as well in order to function
-    std::vector<Asset_Texture*> frames;
-
-    int frame_index = 0;
-    float rate = 0.1f;
-    float t = 0.0f;
-};
-
 // Reset-triggering
 struct Component_Hazard {};
 struct Component_Goal {};

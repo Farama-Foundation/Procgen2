@@ -2,14 +2,13 @@
 
 #include "maze_generator.h"
 #include "room_generator.h"
+#include <iostream>
 
 void System_Tilemap::init() {
     id_to_textures.resize(num_ids);
 
     // Load textures
-    id_to_textures[wall].resize(1);
-
-    id_to_textures[wall][0].load("assets/misc_assets/tileStone_slope.png");
+    id_to_textures[wall].load("assets/misc_assets/tileStone_slope.png");
 
     // Pre-load
     manager_texture.get("assets/misc_assets/yellowCrystal.png");
@@ -87,6 +86,8 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     this->map_width = main_width;
     this->map_height = main_height;
 
+    std::cout << "A" << std::endl;
+
     tile_ids.resize(map_width * map_height);
 
     // Clear
@@ -112,6 +113,8 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
         orbs_for_quadrant.push_back(1 + (i == extra_quad ? extra_orb_sign : 0));
         quadrants.push_back(quadrant);
     }
+    
+    std::cout << "B" << std::endl;
 
     for (int x = 0; x < main_width; x++)
         for (int y = 0; y < main_height; y++) {
@@ -130,6 +133,8 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
             }
         }
 
+    std::cout << "C" << std::endl;
+
     for (int i = 0; i < num_quadrants; i++) {
         int num_orbs = orbs_for_quadrant[i];
 
@@ -143,7 +148,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
         for (int j = 0; j < num_orbs; j++) {
             int pos = pos_dist(rng);
 
-            while (std::find(selected_indices.begin(), selected_indices.end(), pos) == selected_indices.end())
+            while (std::find(selected_indices.begin(), selected_indices.end(), pos) != selected_indices.end())
                 pos = (pos + 1) % quadrant.size();
 
             selected_indices.insert(pos);
@@ -163,6 +168,8 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
             free_cells.push_back(i);
     }
 
+    std::cout << "D" << std::endl;
+
     // Choose randomly without overlap
     std::uniform_int_distribution<int> pos_dist(0, free_cells.size() - 1);
 
@@ -171,7 +178,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     for (int j = 0; j < total_enemies + 1; j++) {
         int pos = pos_dist(rng);
 
-        while (std::find(selected_indices.begin(), selected_indices.end(), pos) == selected_indices.end())
+        while (std::find(selected_indices.begin(), selected_indices.end(), pos) != selected_indices.end())
             pos = (pos + 1) % free_cells.size();
 
         selected_indices.insert(pos);
@@ -228,7 +235,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     c.add_component(agent, Component_Agent{});
 }
 
-void System_Tilemap::render(int theme) {
+void System_Tilemap::render() {
     Rectangle camera_aabb{ (gr.camera_position.x - gr.camera_size.x * 0.5f / gr.camera_scale) * pixels_to_unit, (gr.camera_position.y - gr.camera_size.y * 0.5f / gr.camera_scale) * pixels_to_unit,
         gr.camera_size.x * pixels_to_unit / gr.camera_scale, gr.camera_size.y * pixels_to_unit / gr.camera_scale };
 
@@ -244,10 +251,7 @@ void System_Tilemap::render(int theme) {
             if (id == empty)
                 continue;
 
-            if (id >= id_to_textures.size() || id_to_textures[id].empty())
-                continue;
-
-            Asset_Texture* tex = &id_to_textures[id][theme];
+            Asset_Texture* tex = &id_to_textures[id];
 
             gr.render_texture(tex, (Vector2){ x * unit_to_pixels, y * unit_to_pixels }, unit_to_pixels / tex->width);
         }

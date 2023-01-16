@@ -44,7 +44,7 @@ public:
 private:
     int map_width, map_height;
 
-    std::vector<std::vector<Asset_Texture>> id_to_textures;
+    std::vector<Asset_Texture> id_to_textures;
 
     std::vector<Tile_ID> tile_ids;
 
@@ -83,7 +83,7 @@ public:
         return tile_ids[y + x * map_height];
     }
 
-    void render(int theme);
+    void render();
 
     // General collision detection, returns new rectangle position and a collision flag
     std::pair<Vector2, bool> get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func);

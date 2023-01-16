@@ -49,9 +49,9 @@ std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
 std::shared_ptr<System_Hazard> hazard;
 std::shared_ptr<System_Agent> agent;
+std::shared_ptr<System_Mob_AI> mob_ai;
 
 System_Tilemap::Config tilemap_config;
-int current_map_theme = 0;
 
 // Big list of different background images
 std::vector<std::string> background_names {
@@ -197,6 +197,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Animation>();
     c.register_component<Component_Hazard>();
     c.register_component<Component_Agent>(); // Player
+    c.register_component<Component_Mob_AI>();
 
     // Sprite rendering system
     sprite_render = c.register_system<System_Sprite_Render>();
@@ -224,6 +225,12 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.set_system_signature<System_Agent>(agent_signature);
 
     agent->init();
+
+    // Mob AI setup
+    mob_ai = c.register_system<System_Mob_AI>();
+    Signature mob_ai_signature;
+    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mobs
+    c.set_system_signature<System_Mob_AI>(mob_ai_signature);
 
     // Load backgrounds
     background_textures.resize(background_names.size());
@@ -397,7 +404,7 @@ void render_game(bool is_obs) {
     gr.render_texture(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 64.0f * unit_to_pixels / background->height);
 
     sprite_render->render(negative_z);
-    tilemap->render(current_map_theme);
+    tilemap->render();
     sprite_render->render(positive_z);
     agent->render();
 }
@@ -415,11 +422,6 @@ void reset() {
     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
     current_background_offset_x = dist01(rng);
-
-    // Determine themes
-    std::uniform_int_distribution<int> map_theme_dist(0, 3); // 4 themes
-
-    current_map_theme = map_theme_dist(rng);
 
     // Clear before next render to remove now destroyed entities from previous episode
     sprite_render->clear_render();

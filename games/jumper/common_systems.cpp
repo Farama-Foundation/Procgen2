@@ -13,21 +13,6 @@ void System_Sprite_Render::update(float dt) {
     for (auto const &e : entities) {
         auto &sprite = c.get_component<Component_Sprite>(e);
 
-        // If also has animation
-        if (c.entity_manager.get_signature(e)[c.component_manager.get_component_type<Component_Animation>()]) {
-            // Has animation component
-            auto &animation = c.get_component<Component_Animation>(e);
-
-            animation.t += dt;
-
-            int frames_advance = animation.t * animation.rate;
-            animation.t -= frames_advance / animation.rate; 
-                
-            animation.frame_index = (animation.frame_index + frames_advance) % animation.frames.size();
-
-            sprite.texture = animation.frames[animation.frame_index];
-        }
-
         render_entities[index] = std::make_pair(sprite.z, e);
         index++;
     }
@@ -136,7 +121,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
             return (id == wall_mid || id == wall_top ? full : none);
-        }, fallthrough, dynamics.velocity.y * dt);
+        });
 
         // If was moved up, on ground
         Vector2 delta_position{ collision_data.first.x - world_collision.x, collision_data.first.y - world_collision.y };

@@ -74,7 +74,7 @@ bool System_Agent::update(float dt, int action) {
     bool alive = true;
 
     // Parameters
-    const float speed = 0.5f;
+    const float speed = 0.05f;
 
     // Get tile map system
     std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
@@ -100,7 +100,7 @@ bool System_Agent::update(float dt, int action) {
         // Change in velocity
         if (dynamics.velocity.x != next_velocity.x || dynamics.velocity.y != next_velocity.y) {
             if (next_velocity.x > 0.0f) {
-                if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed) {
+                if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed * dt) {
                     Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) + 1, static_cast<int>(transform.position.y)); 
 
                     if (id != wall) {
@@ -110,7 +110,7 @@ bool System_Agent::update(float dt, int action) {
                 }
             }
             else if (next_velocity.x < 0.0f) {
-                if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed) {
+                if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed * dt) {
                     Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) - 1, static_cast<int>(transform.position.y)); 
 
                     if (id != wall) {
@@ -121,7 +121,7 @@ bool System_Agent::update(float dt, int action) {
             }
 
             if (next_velocity.y > 0.0f) {
-                if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed) {
+                if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed * dt) {
                     Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), static_cast<int>(transform.position.y) + 1); 
 
                     if (id != wall) {
@@ -131,7 +131,7 @@ bool System_Agent::update(float dt, int action) {
                 }
             }
             else if (next_velocity.y < 0.0f) {
-                if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed) {
+                if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed * dt) {
                     Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), static_cast<int>(transform.position.y) - 1); 
 
                     if (id != wall) {
@@ -179,6 +179,10 @@ bool System_Agent::update(float dt, int action) {
         // Move
         transform.position.x += dynamics.velocity.x * speed * dt;
         transform.position.y += dynamics.velocity.y * speed * dt;
+
+        // Camera follows the agent
+        gr.camera_position.x = transform.position.x * unit_to_pixels;
+        gr.camera_position.y = transform.position.y * unit_to_pixels;
     }
 
     return alive;

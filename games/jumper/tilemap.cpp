@@ -274,7 +274,7 @@ void System_Tilemap::render(int theme) {
         }
 }
 
-std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, bool fallthrough, float step_y) {
+std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func) {
     bool collided = false;
 
     int lower_x = std::floor(rectangle.x);
@@ -304,18 +304,8 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, cons
                     Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
 
                     if (collision.width > collision.height) {
-                        if (type == down_only) {
-                            bool inside = (rectangle.y + rectangle.height - step_y > tile.y);
-
-                            if (step_y > 0.01f && !fallthrough && !inside) {
-                                rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
-                                collided = true;
-                            }
-                        }
-                        else {
-                            rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
-                            collided = true;
-                        }
+                        rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
+                        collided = true;
                     }
                 }
             }
@@ -337,10 +327,8 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, cons
                     Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
 
                     if (collision.width <= collision.height) {
-                        if (type != down_only) {
-                            rectangle.x = (collision_center.x > center.x ? tile.x - rectangle.width : tile.x + tile.width);
-                            collided = true;
-                        }
+                        rectangle.x = (collision_center.x > center.x ? tile.x - rectangle.width : tile.x + tile.width);
+                        collided = true;
                     }
                 }
             }
