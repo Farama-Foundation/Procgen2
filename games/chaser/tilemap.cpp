@@ -28,54 +28,58 @@ void System_Tilemap::set_area_with_top(int x, int y, int width, int height, Tile
     set_area(x, y + height - 1, width, 1, top_id);
 }
 
-// Spawning helpers
-void System_Tilemap::spawn_spike(int x, int y) {
+void System_Tilemap::spawn_orb(int tile_index) {
+    int x = tile_index / map_height;
+    int y = tile_index % map_height;
+
     Entity e = c.create_entity();
 
     Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(map_height - 1 - y) + 0.5f };
 
-    Asset_Texture* texture = &manager_texture.get("assets/misc_assets/spikeMan_stand.png");
+    Asset_Texture* texture = &manager_texture.get("assets/misc_assets/yellowCrystal.png");
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.25f, -0.25f }, .scale=0.4f, .z = 1.0f, .texture = texture });
-    c.add_component(e, Component_Hazard{});
-    c.add_component(e, Component_Collision{ .bounds{ -0.25f, -0.25f, 0.5f, 0.5f }});
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=0.4f, .texture = texture });
+    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
 }
 
-bool System_Tilemap::is_space_on_ground(int x, int y) {
-    if (get(x, y) != empty)
-        return false;
+void System_Tilemap::spawn_egg(int tile_index) {
+    int x = tile_index / map_height;
+    int y = tile_index % map_height;
 
-    if (get(x, y + 1) != empty)
-        return false;
+    Entity e = c.create_entity();
 
-    int below_id = get(x, y - 1);
+    Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(map_height - 1 - y) + 0.5f };
 
-    return below_id == wall_mid || below_id == out_of_bounds;
-}
+    Asset_Texture* texture = &manager_texture.get("assets/misc_assets/enemySpikey_1b.png");
 
-bool System_Tilemap::is_top_wall(int x, int y) {
-    return get(x, y) == wall_mid && get(x, y + 1) == empty;
-}
+    c.add_component(e, Component_Transform{ .position{ pos } });
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=0.4f, .texture = texture });
+    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
 
-bool System_Tilemap::is_left_wall(int x, int y) {
-    return get(x, y) == wall_mid && get(x + 1, y) == empty;
-}
-
-bool System_Tilemap::is_right_wall(int x, int y) {
-    return get(x, y) == wall_mid && get(x - 1, y) == empty;
 }
 
 // Main map generation
 void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     int world_dim;
+    int total_enemies;
+    int extra_orb_sign;
 
-    if (cfg.mode == hard_mode)
-        world_dim = 40;
-    else if (cfg.mode == memory_mode)
-        world_dim = 45;
-    else
-        world_dim = 20;
+    if (cfg.mode == hard_mode) {
+        world_dim = 13;
+        total_enemies = 3;
+        extra_orb_sign = -1;
+    }
+    else if (cfg.mode == extreme_mode) {
+        world_dim = 19;
+        total_enemies = 5;
+        extra_orb_sign = 1;
+    }
+    else { // Easy
+        world_dim = 11;
+        total_enemies = 3;
+        extra_orb_sign = 0;
+    }
 
     const int main_width = world_dim;
     const int main_height = world_dim;
@@ -88,156 +92,140 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     // Clear
     std::fill(tile_ids.begin(), tile_ids.end(), empty);
 
-    const int maze_scale = 3;
-    const int maze_dim = main_width / maze_scale;
-
     // Generate maze with no dead ends
     Maze_Generator maze_generator;
-    maze_generator.generate_maze_no_dead_ends(maze_dim, maze_dim, rng);
+    maze_generator.generate_maze_no_dead_ends(world_dim, world_dim, rng);
 
-    Room_Generator room_generator;
-    room_generator.init(main_width, main_height);
+    free_cells.clear();
 
-    std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+    std::vector<std::vector<int>> quadrants;
+    std::vector<int> orbs_for_quadrant;
 
-    for (int i = 0; i < tile_ids.size(); i++) {
-        int obj = maze_generator.grid[maze_generator.get_index((i / main_height) / maze_scale + 1, (i % main_height) / maze_scale + 1)];
+    int num_quadrants = 4;
 
-        float prob = obj == 1 ? 0.8f : 0.2f; // If is wall, higher probability
+    std::uniform_int_distribution<int> quadDist(0, num_quadrants - 1);
+    int extra_quad = quadDist(rng);
 
-        tile_ids[i] = dist01(rng) < prob ? wall_mid : empty; // Wall or space
+    for (int i = 0; i < num_quadrants; i++) {
+        std::vector<int> quadrant;
 
-        room_generator.grid[i] = (tile_ids[i] == wall_mid ? 1 : 0);
+        orbs_for_quadrant.push_back(1 + (i == extra_quad ? extra_orb_sign : 0));
+        quadrants.push_back(quadrant);
     }
-
-    for (int it = 0; it < 2; it++)
-        room_generator.update();
-
-    // Add border cells. needed for helping with solvability and proper rendering of bottommost floor tiles
-    for (int i = 0; i < main_width; i++) {
-        set(i, 0, wall_mid);
-        set(i, main_height - 1, wall_mid);
-
-        room_generator.set(i, 0, 1);
-        room_generator.set(i, main_height - 1, 1);
-    }
-
-    for (int i = 0; i < main_height; i++) {
-        set(0, i, wall_mid);
-        set(main_width - 1, i, wall_mid);
-
-        room_generator.set(0, i, 1);
-        room_generator.set(main_width - 1, i, 1);
-    }
-
-    std::unordered_set<int> best_room;
-    room_generator.find_best_room(best_room);
-
-    for (int i = 0; i < tile_ids.size(); i++)
-        tile_ids[i] = wall_mid;
-
-    std::vector<int> free_cells;
-
-    for (int i : best_room) {
-        tile_ids[i] = empty;
-        free_cells.push_back(i);
-    }
-
-    std::uniform_int_distribution<int> free_cell_dist(0, free_cells.size() - 1);
-
-    int goal_cell = free_cells[free_cell_dist(rng)];
-
-    std::vector<int> agent_candidates;
 
     for (int x = 0; x < main_width; x++)
         for (int y = 0; y < main_height; y++) {
-            int i = y + main_height * x;
+            int obj = maze_generator.get(x + 1, y + 1);
 
-            if (is_space_on_ground(x, y) && i != goal_cell)
-                agent_candidates.push_back(i);
-        }
+            set(x, y, obj == 1 ? wall : empty);
 
-    std::uniform_int_distribution<int> agent_cell_dist(0, agent_candidates.size() - 1);
+            if (obj == 0) {
+                int index = y + x * map_height;
 
-    int agent_cell = agent_candidates[agent_cell_dist(rng)];
+                free_cells.push_back(index);
 
-    std::vector<int> goal_path;
-    room_generator.find_path(agent_cell, goal_cell, goal_path);
+                int quad_index = (x >= map_width / 2) * 2 + (y >= map_height / 2);
 
-    bool should_prune = cfg.mode != memory_mode;
-
-    if (should_prune) {
-        std::unordered_set<int> wide_path;
-        wide_path.insert(goal_path.begin(), goal_path.end());
-        room_generator.expand_room(wide_path, 4);
-
-        for (int i = 0; i < tile_ids.size(); i++)
-            tile_ids[i] = wall_mid;
-
-        for (int i : wide_path)
-            tile_ids[i] = empty;
-    }
-
-    // Spawn the goal
-    int goal_x = goal_cell / main_height;
-    int goal_y = goal_cell % main_height;
-
-    Entity goal = c.create_entity();
-
-    Vector2 pos = { static_cast<float>(goal_x) + 0.5f, static_cast<float>(map_height - 1 - goal_y) + 0.5f };
-
-    c.add_component(goal, Component_Transform{ .position{ pos } });
-    c.add_component(goal, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = &manager_texture.get("assets/misc_assets/carrot.png") });
-    c.add_component(goal, Component_Goal{});
-    c.add_component(goal, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
-
-    float spike_prob = cfg.mode == memory_mode ? 0.0f : 0.2f;
-
-    for (int x = 0; x < main_width; x++)
-        for (int y = 0; y < main_height; y++) {
-            if (is_space_on_ground(x, y) && is_space_on_ground(x - 1, y) && is_space_on_ground(x + 1, y)) {
-                if (dist01(rng) < spike_prob)
-                    set(x, y, spike);
+                quadrants[quad_index].push_back(index);
             }
         }
 
-    std::uniform_int_distribution<int> dist3(0, 2);
+    for (int i = 0; i < num_quadrants; i++) {
+        int num_orbs = orbs_for_quadrant[i];
 
-    // We prevent log vertical walls to improve solvability
-    for (int x = 0; x < main_width; x++)
-        for (int y = 0; y < main_height; y++) {
-            if (is_left_wall(x, y) && is_left_wall(x, y + 1) && is_left_wall(x, y + 2))
-                set(x, y + dist3(rng), empty);
+        std::vector<int> quadrant = quadrants[i];
 
-            if (is_right_wall(x, y) && is_right_wall(x, y + 1) && is_right_wall(x, y + 2))
-                set(x, y + dist3(rng), empty);
+        // Choose randomly without overlap
+        std::uniform_int_distribution<int> pos_dist(0, quadrant.size() - 1);
+
+        std::unordered_set<int> selected_indices;
+
+        for (int j = 0; j < num_orbs; j++) {
+            int pos = pos_dist(rng);
+
+            while (std::find(selected_indices.begin(), selected_indices.end(), pos) == selected_indices.end())
+                pos = (pos + 1) % quadrant.size();
+
+            selected_indices.insert(pos);
         }
 
-    Vector2 agent_pos{ static_cast<float>(static_cast<int>(agent_cell / main_height)) + 0.5f, static_cast<float>(main_height - 1 - (agent_cell % main_height)) };
+        for (int j : selected_indices) {
+            int cell = quadrant[j];
+
+            spawn_orb(cell);
+
+            tile_ids[cell] = marker;
+        }
+    }
+
+    for (int i = 0; i < tile_ids.size(); i++) {
+        if (tile_ids[i] == empty)
+            free_cells.push_back(i);
+    }
+
+    // Choose randomly without overlap
+    std::uniform_int_distribution<int> pos_dist(0, free_cells.size() - 1);
+
+    std::unordered_set<int> selected_indices;
+
+    for (int j = 0; j < total_enemies + 1; j++) {
+        int pos = pos_dist(rng);
+
+        while (std::find(selected_indices.begin(), selected_indices.end(), pos) == selected_indices.end())
+            pos = (pos + 1) % free_cells.size();
+
+        selected_indices.insert(pos);
+    }
+
+    auto it = selected_indices.begin();
+
+    int start_index = *it;
+    int start = free_cells[start_index];
+
+    int agent_spawn_x = start / map_height;
+    int agent_spawn_y = start % map_height;
+
+    for (int i = 0; i < total_enemies; i++) {
+        it++;
+
+        int cell = free_cells[*it];
+
+        tile_ids[cell] = marker;
+
+        spawn_egg(cell);
+    }
+
+    for (int cell : free_cells) {
+        tile_ids[cell] = orb;
+    }
+
+    total_orbs = free_cells.size();
+    orbs_collected = 0;
+
+    for (int i = 0; i < tile_ids.size(); i++) {
+        if (tile_ids[i] == marker)
+            tile_ids[i] = empty;
+    }
+
+    free_cells.clear();
+
+    for (int i = 0; i < tile_ids.size(); i++) {
+        bool is_space = tile_ids[i] != wall;
+
+        if (is_space)
+            free_cells.push_back(i);
+    }
+
+    // Spawn agent
+    Vector2 agent_pos{ static_cast<float>(agent_spawn_x) + 0.5f, static_cast<float>(main_height - 1 - agent_spawn_y) };
 
     // Spawn the player (agent)
     Entity agent = c.create_entity();
 
     c.add_component(agent, Component_Transform{ .position = agent_pos });
-    c.add_component(agent, Component_Collision{ .bounds{ -0.25f, -0.8f, 0.5f, 0.8f } });
+    c.add_component(agent, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f } });
     c.add_component(agent, Component_Dynamics{});
     c.add_component(agent, Component_Agent{});
-
-    for (int i = 0; i < tile_ids.size(); i++) {
-        if (tile_ids[i] == spike) {
-            tile_ids[i] = empty;
-
-            if (i != agent_cell && i != goal_cell) // Avoid placing spike in agent or goal position
-                spawn_spike(i / main_height, i % main_height);
-        }
-    }
-
-    // Set tops
-    for (int x = 0; x < main_width; x++)
-        for (int y = 0; y < main_height; y++) {
-            if (is_top_wall(x, y))
-                set(x, y, wall_top);
-        }
 }
 
 void System_Tilemap::render(int theme) {
@@ -295,18 +283,8 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, cons
                     Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
 
                     if (collision.width > collision.height) {
-                        if (type == down_only) {
-                            bool inside = (rectangle.y + rectangle.height - step_y > tile.y);
-
-                            if (step_y > 0.01f && !fallthrough && !inside) {
-                                rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
-                                collided = true;
-                            }
-                        }
-                        else {
-                            rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
-                            collided = true;
-                        }
+                        rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
+                        collided = true;
                     }
                 }
             }
@@ -328,10 +306,8 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, cons
                     Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
 
                     if (collision.width <= collision.height) {
-                        if (type != down_only) {
-                            rectangle.x = (collision_center.x > center.x ? tile.x - rectangle.width : tile.x + tile.width);
-                            collided = true;
-                        }
+                        rectangle.x = (collision_center.x > center.x ? tile.x - rectangle.width : tile.x + tile.width);
+                        collided = true;
                     }
                 }
             }

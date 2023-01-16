@@ -20,13 +20,14 @@ enum Tile_ID {
     out_of_bounds = -1,
     empty = 0,
     wall,
+    marker,
+    orb,
     num_ids
 };
 
 enum Collision_Type {
     none = 0,
-    full,
-    down_only
+    full
 };
 
 // Tile map system
@@ -46,6 +47,14 @@ private:
     std::vector<std::vector<Asset_Texture>> id_to_textures;
 
     std::vector<Tile_ID> tile_ids;
+
+    std::vector<int> free_cells; // Which cells have nothing in them
+
+    int total_orbs = 0;
+    int orbs_collected = 0;
+
+    void spawn_orb(int tile_index);
+    void spawn_egg(int tile_index);
 
 public:
     // Initialize the tilemap
@@ -85,5 +94,13 @@ public:
 
     int get_height() const {
         return map_height;
+    }
+
+    int get_total_orbs() const {
+        return total_orbs;
+    }
+
+    int get_orbs_collected() const {
+        return orbs_collected;
     }
 };
