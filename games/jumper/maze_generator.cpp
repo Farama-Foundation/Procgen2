@@ -1,5 +1,4 @@
 #include "maze_generator.h"
-#include <iostream>
 
 const int maze_offset = 1;
 
@@ -23,7 +22,7 @@ std::vector<int> Maze_Generator::get_neighbor_indices(int x, int y) const {
     }
 
     for (int dy = -1; dy <= 1; dy += 2) {
-        int ny = x + dy;
+        int ny = y + dy;
 
         if (ny < 0 || ny >= array_width)
             continue;

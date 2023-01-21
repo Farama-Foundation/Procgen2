@@ -179,10 +179,6 @@ bool System_Agent::update(float dt, int action) {
         // Move
         transform.position.x += dynamics.velocity.x * speed * dt;
         transform.position.y += dynamics.velocity.y * speed * dt;
-
-        // Camera follows the agent
-        gr.camera_position.x = transform.position.x * unit_to_pixels;
-        gr.camera_position.y = transform.position.y * unit_to_pixels;
     }
 
     return alive;

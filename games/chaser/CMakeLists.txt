@@ -15,6 +15,8 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+set(CMAKE_CXX_FLAGS "-D_GLIBCXX_DEBUG") # Bounds checking STL
+
 ############################################################################
 # Get SDL2
 
@@ -36,7 +38,6 @@ set(SOURCES
     "${SOURCE_PATH}/common_assets.cpp"
     "${SOURCE_PATH}/common_systems.cpp"
     "${SOURCE_PATH}/maze_generator.cpp"
-    "${SOURCE_PATH}/room_generator.cpp"
     "${SOURCE_PATH}/tilemap.cpp"
 )
 

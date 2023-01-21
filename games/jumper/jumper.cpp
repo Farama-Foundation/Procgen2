@@ -29,7 +29,7 @@ const int num_actions = 15;
 int window_width = 512;
 int window_height = 512;
 
-const float game_zoom = 0.3f; // Base game zoom level
+float game_zoom = 0.3f; // Base game zoom level
 
 std::mt19937 rng;
 

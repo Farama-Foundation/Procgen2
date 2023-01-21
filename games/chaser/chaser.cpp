@@ -29,7 +29,7 @@ const int num_actions = 15;
 int window_width = 512;
 int window_height = 512;
 
-const float game_zoom = 0.3f; // Base game zoom level
+float game_zoom = 0.25f; // Base game zoom level
 
 std::mt19937 rng;
 
@@ -392,7 +392,9 @@ void render_game(bool is_obs) {
     int width = is_obs ? obs_width : window_width;
     int height = is_obs ? obs_height : window_height;
 
-    gr.camera_scale = game_zoom * static_cast<float>(width) / static_cast<float>(obs_width);
+    game_zoom = static_cast<float>(width) * pixels_to_unit / static_cast<float>(tilemap->get_width());
+
+    gr.camera_scale = game_zoom;
     gr.camera_size = (Vector2){ static_cast<float>(width), static_cast<float>(height) };
 
     // Draw background image
@@ -425,4 +427,8 @@ void reset() {
 
     // Clear before next render to remove now destroyed entities from previous episode
     sprite_render->clear_render();
+
+    // Set camera
+    gr.camera_position.x = tilemap->get_width() * 0.5f * unit_to_pixels;
+    gr.camera_position.y = tilemap->get_height() * 0.5f * unit_to_pixels;
 }

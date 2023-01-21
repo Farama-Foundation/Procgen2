@@ -1,7 +1,6 @@
 #include "tilemap.h"
 
 #include "maze_generator.h"
-#include "room_generator.h"
 #include <iostream>
 
 void System_Tilemap::init() {
@@ -86,8 +85,6 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     this->map_width = main_width;
     this->map_height = main_height;
 
-    std::cout << "A" << std::endl;
-
     tile_ids.resize(map_width * map_height);
 
     // Clear
@@ -114,8 +111,6 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
         quadrants.push_back(quadrant);
     }
     
-    std::cout << "B" << std::endl;
-
     for (int x = 0; x < main_width; x++)
         for (int y = 0; y < main_height; y++) {
             int obj = maze_generator.get(x + 1, y + 1);
@@ -132,8 +127,6 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
                 quadrants[quad_index].push_back(index);
             }
         }
-
-    std::cout << "C" << std::endl;
 
     for (int i = 0; i < num_quadrants; i++) {
         int num_orbs = orbs_for_quadrant[i];
@@ -167,8 +160,6 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
         if (tile_ids[i] == empty)
             free_cells.push_back(i);
     }
-
-    std::cout << "D" << std::endl;
 
     // Choose randomly without overlap
     std::uniform_int_distribution<int> pos_dist(0, free_cells.size() - 1);
@@ -248,7 +239,7 @@ void System_Tilemap::render() {
         for (int x = lower_x; x <= upper_x; x++) {
             Tile_ID id = get(x, map_height - 1 - y);
 
-            if (id == empty)
+            if (id == empty || id == out_of_bounds)
                 continue;
 
             Asset_Texture* tex = &id_to_textures[id];
