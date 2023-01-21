@@ -188,6 +188,9 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
             agent.face_forward = true;
         else if (movement_x < 0.0f)
             agent.face_forward = false;
+
+        // Set info
+        info.to_goal = Vector2{ tilemap->getInfo().goal_pos.x - transform.position.x, tilemap->getInfo().goal_pos.y - transform.position.y };
     }
 
     return std::make_pair(alive, achieved_goal);

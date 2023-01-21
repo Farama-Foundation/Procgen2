@@ -33,6 +33,10 @@ enum Collision_Type {
 // Tile map system
 class System_Tilemap : public System {
 public:
+    struct Tilemap_Info {
+        Vector2 goal_pos = Vector2{ 0.0f, 0.0f };
+    };
+
     struct Tile {
         std::vector<Asset_Texture> textures;
     };
@@ -47,6 +51,8 @@ private:
     std::vector<std::vector<Asset_Texture>> id_to_textures;
 
     std::vector<Tile_ID> tile_ids;
+
+    Tilemap_Info info;
 
     void spawn_spike(int x, int y);
 
@@ -93,5 +99,9 @@ public:
 
     int get_height() const {
         return map_height;
+    }
+
+    const Tilemap_Info &getInfo() const {
+        return info;
     }
 };

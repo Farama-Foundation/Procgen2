@@ -193,12 +193,14 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
 
     Entity goal = c.create_entity();
 
-    Vector2 pos = { static_cast<float>(goal_x) + 0.5f, static_cast<float>(map_height - 1 - goal_y) + 0.5f };
+    Vector2 goal_pos = { static_cast<float>(goal_x) + 0.5f, static_cast<float>(map_height - 1 - goal_y) + 0.5f };
 
-    c.add_component(goal, Component_Transform{ .position{ pos } });
+    c.add_component(goal, Component_Transform{ .position{ goal_pos } });
     c.add_component(goal, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = &manager_texture.get("assets/misc_assets/carrot.png") });
     c.add_component(goal, Component_Goal{});
     c.add_component(goal, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+
+    info.goal_pos = goal_pos;
 
     float spike_prob = cfg.mode == memory_mode ? 0.0f : 0.2f;
 
