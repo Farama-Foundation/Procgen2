@@ -75,7 +75,7 @@ bool System_Agent::update(float dt, int action) {
     bool alive = true;
 
     // Parameters
-    const float speed = 0.05f;
+    const float speed = 0.2f;
     const float input_reset_time = 1.0f / speed * 0.5f;
 
     // Get tile map system

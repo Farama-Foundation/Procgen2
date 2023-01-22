@@ -219,7 +219,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     total_points = free_cells.size();
 
     for (int cell : free_cells)
-        spawn_point(free_cells[cell]);
+        spawn_point(cell);
 
     // Clear markers
     for (int i = 0; i < tile_ids.size(); i++) {
