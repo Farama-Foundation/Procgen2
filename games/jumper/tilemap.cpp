@@ -233,6 +233,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     c.add_component(agent, Component_Collision{ .bounds{ -0.25f, -0.8f, 0.5f, 0.8f } });
     c.add_component(agent, Component_Dynamics{});
     c.add_component(agent, Component_Agent{});
+    c.add_component(agent, Component_Particles{ .particles = std::vector<Particle>(10), .offset{ 0.0f, -0.2f } });
 
     for (int i = 0; i < tile_ids.size(); i++) {
         if (tile_ids[i] == spike) {

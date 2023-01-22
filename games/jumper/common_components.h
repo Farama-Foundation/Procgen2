@@ -63,4 +63,5 @@ struct Component_Particles {
     float lifespan = 5.0f;
     float spawn_timer = 0.0f;
     float spawn_time = 0.5f;
+    bool enabled = true;
 };

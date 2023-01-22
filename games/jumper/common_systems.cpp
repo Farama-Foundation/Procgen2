@@ -191,6 +191,11 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         // Set info
         info.to_goal = Vector2{ tilemap->getInfo().goal_pos.x - transform.position.x, tilemap->getInfo().goal_pos.y - transform.position.y };
+
+        // Enable particles on jump
+        auto &particles = c.get_component<Component_Particles>(e);
+
+        particles.enabled = !agent.on_ground || abs(dynamics.velocity.x) > 0.01f;
     }
 
     return std::make_pair(alive, achieved_goal);
@@ -261,7 +266,7 @@ void System_Particles::update(float dt) {
         particles.spawn_timer += dt;
 
         // If time to spawn new particle
-        if (dead_index != -1 && particles.spawn_timer >= particles.spawn_time) {
+        if (dead_index != -1 && particles.spawn_timer >= particles.spawn_time && particles.enabled) {
             particles.spawn_timer = std::fmod(particles.spawn_timer, particles.spawn_time);
 
             Particle &p = particles.particles[dead_index];
