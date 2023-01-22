@@ -53,6 +53,8 @@ private:
     // Agent textures
     Asset_Texture agent_texture;
 
+    float input_timer = 0.0f; // For timing when input should reset
+
 public:
     void init(); // Needs to load sprites
 

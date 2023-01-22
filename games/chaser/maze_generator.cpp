@@ -161,7 +161,12 @@ void Maze_Generator::generate_maze_no_dead_ends(int maze_width, int maze_height,
                 if (num_adjacent_walls > 0) {
                     std::uniform_int_distribution<int> n_dist(0, num_adjacent_walls - 1);
 
-                    grid[neighbors[n_dist(rng)]] = 0; // Set space randomly
+                    int n = n_dist(rng);
+
+                    while (grid[neighbors[n]] != 1)
+                        n++;
+
+                    grid[neighbors[n]] = 0; // Set space randomly
                 }
             }
         }

@@ -51,4 +51,6 @@ struct Component_Hazard {};
 
 struct Component_Agent {
     int action = 0;
+
+    Vector2 next_velocity{ 0.0f, 0.0f };
 };

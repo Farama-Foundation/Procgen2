@@ -3,6 +3,7 @@
 #include "tilemap.h"
 
 #include "helpers.h"
+#include <iostream>
 
 void System_Sprite_Render::update(float dt) {
     if (render_entities.size() != entities.size())
@@ -75,6 +76,7 @@ bool System_Agent::update(float dt, int action) {
 
     // Parameters
     const float speed = 0.05f;
+    const float input_reset_time = 1.0f / speed * 0.5f;
 
     // Get tile map system
     std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
@@ -92,93 +94,115 @@ bool System_Agent::update(float dt, int action) {
 
         const auto &collision = c.get_component<Component_Collision>(e);
 
-        float movement_x = (agent.action == 1) - (agent.action == 7);
-        float movement_y = (agent.action == 5) - (agent.action == 3);
+        float movement_x = (agent.action == 7) - (agent.action == 1);
+        float movement_y = (agent.action == 3) - (agent.action == 5);
 
-        Vector2 next_velocity = Vector2{ movement_x, movement_y };
+        // Can't move diagonally
+        if (movement_x != 0.0f && movement_y != 0.0f)
+            movement_y = 0.0f;
 
-        // Change in velocity
-        if (dynamics.velocity.x != next_velocity.x || dynamics.velocity.y != next_velocity.y) {
-            if (next_velocity.x > 0.0f) {
-                if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed * dt) {
-                    Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) + 1, static_cast<int>(transform.position.y)); 
+        Vector2 desired_velocity = Vector2{ movement_x, movement_y };
 
-                    if (id != wall) {
-                        transform.position.x = static_cast<int>(transform.position.x) + 0.5f;
-                        dynamics.velocity = next_velocity;
-                    }
+        // If non-zero desired velocity, set next to it
+        if (desired_velocity.x != 0.0f || desired_velocity.y != 0.0f) {
+            agent.next_velocity = desired_velocity;
+            input_timer = 0.0f;
+        }
+
+        // If can change velocity to the next velocity (within some error), do so
+        if (agent.next_velocity.x > 0.0f) {
+            if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed * dt) {
+                Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) + 1, tilemap->get_height() - 1 - static_cast<int>(transform.position.y)); 
+
+                if (id == empty) {
+                    transform.position.y = static_cast<int>(transform.position.y) + 0.5f;
+                    dynamics.velocity = agent.next_velocity;
                 }
             }
-            else if (next_velocity.x < 0.0f) {
-                if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed * dt) {
-                    Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) - 1, static_cast<int>(transform.position.y)); 
+        }
+        else if (agent.next_velocity.x < 0.0f) {
+            if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed * dt) {
+                Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) - 1, tilemap->get_height() - 1 - static_cast<int>(transform.position.y)); 
 
-                    if (id != wall) {
-                        transform.position.x = static_cast<int>(transform.position.x) + 0.5f;
-                        dynamics.velocity = next_velocity;
-                    }
-                }
-            }
-
-            if (next_velocity.y > 0.0f) {
-                if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed * dt) {
-                    Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), static_cast<int>(transform.position.y) + 1); 
-
-                    if (id != wall) {
-                        transform.position.y = static_cast<int>(transform.position.y) + 0.5f;
-                        dynamics.velocity = next_velocity;
-                    }
-                }
-            }
-            else if (next_velocity.y < 0.0f) {
-                if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed * dt) {
-                    Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), static_cast<int>(transform.position.y) - 1); 
-
-                    if (id != wall) {
-                        transform.position.y = static_cast<int>(transform.position.y) + 0.5f;
-                        dynamics.velocity = next_velocity;
-                    }
+                if (id == empty) {
+                    transform.position.y = static_cast<int>(transform.position.y) + 0.5f;
+                    dynamics.velocity = agent.next_velocity;
                 }
             }
         }
 
-        if (dynamics.velocity.x < 0.0f) {
-            Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) - 1, static_cast<int>(transform.position.y)); 
+        if (agent.next_velocity.y > 0.0f) {
+            if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed * dt) {
+                Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), tilemap->get_height() - 1 - (static_cast<int>(transform.position.y) + 1)); 
 
-            if (id == wall) {
-                transform.position.x = static_cast<int>(transform.position.x) + 0.5f;
-                dynamics.velocity.x = 0.0f;
+                if (id == empty) {
+                    transform.position.x = static_cast<int>(transform.position.x) + 0.5f;
+                    dynamics.velocity = agent.next_velocity;
+                }
+            }
+        }
+        else if (agent.next_velocity.y < 0.0f) {
+            if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed * dt) {
+                Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), tilemap->get_height() - 1 - (static_cast<int>(transform.position.y) - 1)); 
+
+                if (id == empty) {
+                    transform.position.x = static_cast<int>(transform.position.x) + 0.5f;
+                    dynamics.velocity = agent.next_velocity;
+                }
+            }
+        }
+
+        // Collisions
+        if (dynamics.velocity.x < 0.0f) {
+            if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed * dt) {
+                Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) - 1, tilemap->get_height() - 1 - static_cast<int>(transform.position.y)); 
+
+                if (id != empty) {
+                    transform.position.x = static_cast<int>(transform.position.x) + 0.5f;
+                    dynamics.velocity.x = 0.0f;
+                }
             }
         }
         else if (dynamics.velocity.x > 0.0f) {
-            Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) + 1, static_cast<int>(transform.position.y)); 
+            if (abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) <= speed * dt) {
+                Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) + 1, tilemap->get_height() - 1 - static_cast<int>(transform.position.y)); 
 
-            if (id == wall) {
-                transform.position.x = static_cast<int>(transform.position.x) + 0.5f;
-                dynamics.velocity.x = 0.0f;
+                if (id != empty) {
+                    transform.position.x = static_cast<int>(transform.position.x) + 0.5f;
+                    dynamics.velocity.x = 0.0f;
+                }
             }
         }
 
         if (dynamics.velocity.y < 0.0f) {
-            Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), static_cast<int>(transform.position.y) - 1); 
+            if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed * dt) {
+                Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), tilemap->get_height() - 1 - (static_cast<int>(transform.position.y) - 1)); 
 
-            if (id == wall) {
-                transform.position.x = static_cast<int>(transform.position.y) + 0.5f;
-                dynamics.velocity.x = 0.0f;
+                if (id != empty) {
+                    transform.position.y = static_cast<int>(transform.position.y) + 0.5f;
+                    dynamics.velocity.y = 0.0f;
+                }
             }
         }
         else if (dynamics.velocity.y > 0.0f) {
-            Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), static_cast<int>(transform.position.y) + 1); 
+            if (abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) <= speed * dt) {
+                Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), tilemap->get_height() - 1 - (static_cast<int>(transform.position.y) + 1)); 
 
-            if (id == wall) {
-                transform.position.y = static_cast<int>(transform.position.y) + 0.5f;
-                dynamics.velocity.y = 0.0f;
+                if (id != empty) {
+                    transform.position.y = static_cast<int>(transform.position.y) + 0.5f;
+                    dynamics.velocity.y = 0.0f;
+                }
             }
         }
 
         // Move
         transform.position.x += dynamics.velocity.x * speed * dt;
         transform.position.y += dynamics.velocity.y * speed * dt;
+
+        if (input_timer >= input_reset_time)
+            agent.next_velocity = { 0.0f, 0.0f };
+        else
+            input_timer += dt;
     }
 
     return alive;
@@ -194,10 +218,8 @@ void System_Agent::render() {
 
         // Additional offsets needed since texture sizes different between animation frames
         float agent_scale = 1.0f;
-        Vector2 agent_offset{ 0.0f, 0.0f };
+        Vector2 agent_offset{ -0.5f, -0.5f };
 
-        Vector2 position{ transform.position.x - 0.25f, transform.position.y - 1.0f };
-
-        gr.render_texture(&agent_texture, (Vector2){ (position.x + agent_offset.x) * unit_to_pixels, (position.y + agent_offset.y) * unit_to_pixels }, unit_to_pixels / agent_texture.width * agent_scale, 1.0f, false);
+        gr.render_texture(&agent_texture, (Vector2){ (transform.position.x + agent_offset.x) * unit_to_pixels, (transform.position.y + agent_offset.y) * unit_to_pixels }, unit_to_pixels / agent_texture.width * agent_scale, 1.0f, false);
     }
 }

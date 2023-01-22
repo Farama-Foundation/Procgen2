@@ -12,6 +12,7 @@ void System_Tilemap::init() {
     // Pre-load
     manager_texture.get("assets/misc_assets/yellowCrystal.png");
     manager_texture.get("assets/misc_assets/enemySpikey_1b.png");
+    manager_texture.get("assets/custom/chaser_point.png");
 }
 
 // Tile manipulation
@@ -38,6 +39,21 @@ void System_Tilemap::spawn_orb(int tile_index) {
 
     c.add_component(e, Component_Transform{ .position{ pos } });
     c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=0.4f, .texture = texture });
+    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+}
+
+void System_Tilemap::spawn_point(int tile_index) {
+    int x = tile_index / map_height;
+    int y = tile_index % map_height;
+
+    Entity e = c.create_entity();
+
+    Vector2 pos = { static_cast<float>(x) + 0.5f, static_cast<float>(map_height - 1 - y) + 0.5f };
+
+    Asset_Texture* texture = &manager_texture.get("assets/custom/chaser_point.png");
+
+    c.add_component(e, Component_Transform{ .position{ pos } });
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=1.0f, .texture = texture });
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
 }
 
@@ -193,9 +209,8 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
         spawn_egg(cell);
     }
 
-    for (int cell : free_cells) {
-        tile_ids[cell] = orb;
-    }
+    for (int cell : free_cells)
+        spawn_point(free_cells[cell]);
 
     total_orbs = free_cells.size();
     orbs_collected = 0;
@@ -215,7 +230,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     }
 
     // Spawn agent
-    Vector2 agent_pos{ static_cast<float>(agent_spawn_x) + 0.5f, static_cast<float>(main_height - 1 - agent_spawn_y) };
+    Vector2 agent_pos{ static_cast<float>(agent_spawn_x) + 0.5f, static_cast<float>(main_height - 1 - agent_spawn_y) + 0.5f };
 
     // Spawn the player (agent)
     Entity agent = c.create_entity();

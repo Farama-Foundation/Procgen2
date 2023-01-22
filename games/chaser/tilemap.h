@@ -21,7 +21,6 @@ enum Tile_ID {
     empty = 0,
     wall,
     marker,
-    orb,
     num_ids
 };
 
@@ -54,6 +53,7 @@ private:
     int orbs_collected = 0;
 
     void spawn_orb(int tile_index);
+    void spawn_point(int tile_index);
     void spawn_egg(int tile_index);
 
 public:
@@ -78,7 +78,7 @@ public:
     // Get a tile
     Tile_ID get(int x, int y) {
         if (x < 0 || y < 0 || x >= map_width || y >= map_height)
-            return out_of_bounds; // Out of bounds is a wall
+            return out_of_bounds;
 
         return tile_ids[y + x * map_height];
     }
