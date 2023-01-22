@@ -9,25 +9,23 @@ struct Wall {
     int y2;
 };
 
-std::vector<int> Maze_Generator::get_neighbor_indices(int x, int y) const {
-    std::vector<int> neighbors;
+std::array<int, 4> Maze_Generator::get_neighbor_indices(int x, int y) const {
+    std::array<int, 4> neighbors;
+
+    int index = 0;
 
     for (int dx = -1; dx <= 1; dx += 2) {
         int nx = x + dx;
 
-        if (nx < 0 || nx >= array_width)
-            continue;
-
-        neighbors.push_back(get_index(nx, y));
+        neighbors[index] = get_index(nx, y);
+        index++;
     }
 
     for (int dy = -1; dy <= 1; dy += 2) {
         int ny = y + dy;
 
-        if (ny < 0 || ny >= array_width)
-            continue;
-
-        neighbors.push_back(get_index(x, ny));
+        neighbors[index] = get_index(x, ny);
+        index++;
     }
 
     return neighbors;
@@ -134,39 +132,40 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
 void Maze_Generator::generate_maze_no_dead_ends(int maze_width, int maze_height, std::mt19937 &rng) {
     generate_maze(maze_width, maze_height, rng);
 
-    std::vector<int> adj_space;
-    std::vector<int> adj_wall;
-
     int array_size = array_width * array_height;
 
     for (int i = 0; i < array_size; i++) {
         if (grid[i] == 0) { // Space
-            std::vector<int> neighbors = get_neighbor_indices(i / array_height, i % array_height);
+            std::array<int, 4> neighbors = get_neighbor_indices(i / array_height, i % array_height);
 
             int num_adjacent_spaces = 0;
+            int num_adjacent_walls = 0;
 
             for (int n = 0; n < neighbors.size(); n++) {
                 if (grid[neighbors[n]] == 0) // Space
                     num_adjacent_spaces++;
+                else if (grid[neighbors[n]] == 1)
+                    num_adjacent_walls++;
             }
 
-            if (num_adjacent_spaces == 1) {
-                int num_adjacent_walls = 0;
+            if (num_adjacent_spaces == 1 && num_adjacent_walls > 0) {
+                std::uniform_int_distribution<int> n_dist(0, num_adjacent_walls - 1);
+
+                int n_select = n_dist(rng);
 
                 for (int n = 0; n < neighbors.size(); n++) {
-                    if (grid[neighbors[n]] == 1) // Wall
-                        num_adjacent_walls++;
-                }
+                    int n_offset = (n_select + n) % num_adjacent_walls;
 
-                if (num_adjacent_walls > 0) {
-                    std::uniform_int_distribution<int> n_dist(0, num_adjacent_walls - 1);
+                    int cell = neighbors[n_offset];
 
-                    int n = n_dist(rng);
+                    int x = cell / array_height;
+                    int y = cell % array_height;
 
-                    while (grid[neighbors[n]] != 1)
-                        n++;
-
-                    grid[neighbors[n]] = 0; // Set space randomly
+                    if (x >= 1 && y >= 1 && x < array_width - 1 && y < array_height - 1 && grid[cell] == 1) {
+                        grid[cell] = 0; // Set space from random choice
+                    
+                        break;
+                    }
                 }
             }
         }

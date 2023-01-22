@@ -38,7 +38,7 @@ void System_Tilemap::spawn_orb(int tile_index) {
     Asset_Texture* texture = &manager_texture.get("assets/misc_assets/yellowCrystal.png");
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=0.4f, .texture = texture });
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=1.0f, .texture = texture });
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
 }
 
@@ -68,7 +68,7 @@ void System_Tilemap::spawn_egg(int tile_index) {
     Asset_Texture* texture = &manager_texture.get("assets/misc_assets/enemySpikey_1b.png");
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=0.4f, .texture = texture });
+    c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=1.0f, .texture = texture });
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
     c.add_component(e, Component_Mob_AI{});
 }
@@ -110,8 +110,6 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     Maze_Generator maze_generator;
     maze_generator.generate_maze_no_dead_ends(world_dim, world_dim, rng);
 
-    free_cells.clear();
-
     std::vector<std::vector<int>> quadrants;
     std::vector<int> orbs_for_quadrant;
 
@@ -135,8 +133,6 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
 
             if (obj == 0) {
                 int index = y + x * map_height;
-
-                free_cells.push_back(index);
 
                 int quad_index = (x >= map_width / 2) * 2 + (y >= map_height / 2);
 
@@ -172,6 +168,8 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
         }
     }
 
+    free_cells.clear();
+
     for (int i = 0; i < tile_ids.size(); i++) {
         if (tile_ids[i] == empty)
             free_cells.push_back(i);
@@ -199,34 +197,34 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     int agent_spawn_x = start / map_height;
     int agent_spawn_y = start % map_height;
 
+    tile_ids[start] = marker;
+
     for (int i = 0; i < total_enemies; i++) {
         it++;
 
         int cell = free_cells[*it];
 
-        tile_ids[cell] = marker;
-
         spawn_egg(cell);
-    }
 
-    for (int cell : free_cells)
-        spawn_point(free_cells[cell]);
-
-    total_orbs = free_cells.size();
-    orbs_collected = 0;
-
-    for (int i = 0; i < tile_ids.size(); i++) {
-        if (tile_ids[i] == marker)
-            tile_ids[i] = empty;
+        tile_ids[cell] = marker;
     }
 
     free_cells.clear();
 
     for (int i = 0; i < tile_ids.size(); i++) {
-        bool is_space = tile_ids[i] != wall;
-
-        if (is_space)
+        if (tile_ids[i] == empty)
             free_cells.push_back(i);
+    }
+
+    total_points = free_cells.size();
+
+    for (int cell : free_cells)
+        spawn_point(free_cells[cell]);
+
+    // Clear markers
+    for (int i = 0; i < tile_ids.size(); i++) {
+        if (tile_ids[i] == marker)
+            tile_ids[i] = empty;
     }
 
     // Spawn agent
@@ -256,6 +254,8 @@ void System_Tilemap::render() {
 
             if (id == empty || id == out_of_bounds)
                 continue;
+
+            assert(id == wall);
 
             Asset_Texture* tex = &id_to_textures[id];
 

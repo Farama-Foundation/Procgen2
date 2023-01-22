@@ -37,7 +37,7 @@ public:
     };
 
     struct Config {
-        Distribution_Mode mode = hard_mode;
+        Distribution_Mode mode = extreme_mode;
     };
 
 private:
@@ -49,8 +49,7 @@ private:
 
     std::vector<int> free_cells; // Which cells have nothing in them
 
-    int total_orbs = 0;
-    int orbs_collected = 0;
+    int total_points = 0;
 
     void spawn_orb(int tile_index);
     void spawn_point(int tile_index);
@@ -96,11 +95,7 @@ public:
         return map_height;
     }
 
-    int get_total_orbs() const {
-        return total_orbs;
-    }
-
-    int get_orbs_collected() const {
-        return orbs_collected;
+    int get_total_points() const {
+        return total_points;
     }
 };
