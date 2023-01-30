@@ -12,7 +12,7 @@ obs, info = env.reset()
 
 average = 0.0
 
-#cv2.namedWindow("Debug", cv2.WINDOW_NORMAL)
+cv2.namedWindow("Debug", cv2.WINDOW_NORMAL)
 
 for i in range(1000000):
     start = time.perf_counter()
@@ -29,7 +29,11 @@ for i in range(1000000):
     if i % 1000 == 0:
         print(average)
 
-    #obs_screen = obs["screen"].copy().reshape((64, 64, 3))
+    obs_screen = obs["screen"].copy().reshape((64, 64, 3))
+
+    if i % 1000 == 0:
+        cv2.imshow("Debug", obs_screen)
+        cv2.waitKey(1)
     
     if term:
         print("Resetting...")

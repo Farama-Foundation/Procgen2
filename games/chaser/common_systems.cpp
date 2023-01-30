@@ -162,8 +162,8 @@ bool System_Mob_AI::update(float dt, std::mt19937 &rng) {
                 speed = speed_low;
             }
 
-            bool at_junction = abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) +
-                abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) < speed * dt;
+            bool at_junction = std::max(abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)),
+                abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f))) < speed * dt;
 
             // If not moving or at a junction
             if ((dynamics.velocity.x == 0.0f && dynamics.velocity.y == 0.0f) || at_junction) {
@@ -174,7 +174,7 @@ bool System_Mob_AI::update(float dt, std::mt19937 &rng) {
                 for (int dx = -1; dx <= 1; dx += 2) {
                     Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) + dx, tilemap->get_height() - 1 - static_cast<int>(transform.position.y)); 
 
-                    dir_possibilities[dir_index] = (id != wall && dx != -sign(dynamics.velocity.x));
+                    dir_possibilities[dir_index] = (id == empty && dx != -sign(dynamics.velocity.x));
 
                     if (dir_possibilities[dir_index])
                         num_possibilities++;
@@ -185,7 +185,7 @@ bool System_Mob_AI::update(float dt, std::mt19937 &rng) {
                 for (int dy = -1; dy <= 1; dy += 2) {
                     Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), tilemap->get_height() - 1 - (static_cast<int>(transform.position.y) + dy)); 
 
-                    dir_possibilities[dir_index] = (id != wall && dy != -sign(dynamics.velocity.y));
+                    dir_possibilities[dir_index] = (id == empty && dy != -sign(dynamics.velocity.y));
 
                     if (dir_possibilities[dir_index])
                         num_possibilities++;
@@ -217,21 +217,21 @@ bool System_Mob_AI::update(float dt, std::mt19937 &rng) {
                     }
                 }
                 else {
-                    assert(num_possibilities > 0);
+                    if (num_possibilities > 0) {
+                        // Roulette wheel selection of a possibility
+                        std::uniform_int_distribution<int> cusp_dist(0, num_possibilities - 1);
 
-                    // Roulette wheel selection of a possibility
-                    std::uniform_int_distribution<int> cusp_dist(0, num_possibilities - 1);
+                        int rand_cusp = cusp_dist(rng);
 
-                    int rand_cusp = cusp_dist(rng);
+                        int sum_so_far = 0;
 
-                    int sum_so_far = 0;
+                        for (int i = 0; i < dir_possibilities.size(); i++) {
+                            sum_so_far += dir_possibilities[i];
 
-                    for (int i = 0; i < dir_possibilities.size(); i++) {
-                        sum_so_far += dir_possibilities[i];
-
-                        if (sum_so_far > rand_cusp) {
-                            select_index = i;
-                            break;
+                            if (sum_so_far > rand_cusp) {
+                                select_index = i;
+                                break;
+                            }
                         }
                     }
                 }
@@ -239,6 +239,13 @@ bool System_Mob_AI::update(float dt, std::mt19937 &rng) {
                 // Change direction
                 dynamics.velocity.x = directions[select_index].x * speed;
                 dynamics.velocity.y = directions[select_index].y * speed;
+
+                // Stay aligned
+                if (directions[select_index].x == 0.0f)
+                    transform.position.x = static_cast<int>(transform.position.x) + 0.5f;
+
+                if (directions[select_index].y == 0.0f)
+                    transform.position.y = static_cast<int>(transform.position.y) + 0.5f;
             }
 
             transform.position.x += dynamics.velocity.x * dt;
