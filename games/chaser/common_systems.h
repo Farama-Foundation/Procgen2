@@ -26,25 +26,30 @@ public:
     void update(float dt);
     void render(Sprite_Render_Mode mode);
 
-    void clear_render() {
+    void reset() {
         render_entities.clear();
     }
 };
 
-// -------------------- Hazards --------------------
-
-// Empty mostly, since just need it to collect hazards for agent system
-class System_Hazard : public System {
+// Empty mostly, since just need it to collect points for agent system
+class System_Point : public System {
 public:
-    std::unordered_set<Entity> &get_entities() {
-        return entities;
+    int num_points_collected = 0;
+    int point_delta = 0;
+    int num_points_available = 0;
+
+    void update();
+
+    void reset() {
+        num_points_collected = 0;
+        point_delta = 0;
+        num_points_available = 0;
     }
 };
 
 // Enemy controller
 class System_Mob_AI : public System {
 private:
-    float hatch_timer = 0.0f;
     float anim_timer = 0.0f;
     int anim_index = 0;
 
@@ -53,7 +58,7 @@ private:
     std::vector<Asset_Texture> anim_textures;
     std::array<bool, 4> dir_possibilities;
 
-    static constexpr std::array<Vector2, 4> directions = {
+    const std::array<Vector2, 4> directions = {
         Vector2{ -1.0f, 0.0f },
         Vector2{ 1.0f, 0.0f },
         Vector2{ 0.0f, -1.0f },
@@ -63,9 +68,15 @@ private:
 public:
     void init();
 
-    void update(float dt, std::mt19937 &rng);
+    bool update(float dt, std::mt19937 &rng); // Return true if player hits enemy while vulnerable
 
     void eat();
+
+    void reset() {
+        anim_timer = 0.0f;
+        anim_index = 0;
+        eat_timer = 0.0f;
+    }
 };
 
 // --------------------- Player --------------------
@@ -73,7 +84,7 @@ public:
 class System_Agent : public System {
 public:
     struct Agent_Info {
-        Vector2 position = Vector2{ 0.0f, 0.0f };
+        Entity entity;
     };
 
 private:
@@ -91,7 +102,11 @@ public:
     bool update(float dt, int action);
     void render();
 
-    Agent_Info &get_info() const {
+    const Agent_Info &get_info() const {
         return info;
+    }
+
+    void reset() {
+        input_timer = 0.0f;
     }
 };

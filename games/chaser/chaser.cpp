@@ -47,7 +47,7 @@ float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it t
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
-std::shared_ptr<System_Hazard> hazard;
+std::shared_ptr<System_Point> point;
 std::shared_ptr<System_Agent> agent;
 std::shared_ptr<System_Mob_AI> mob_ai;
 
@@ -195,7 +195,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Dynamics>();
     c.register_component<Component_Sprite>();
     c.register_component<Component_Animation>();
-    c.register_component<Component_Hazard>();
+    c.register_component<Component_Point>();
     c.register_component<Component_Agent>(); // Player
     c.register_component<Component_Mob_AI>();
 
@@ -212,11 +212,11 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     tilemap->init();
 
-    // Hazard system setup
-    hazard = c.register_system<System_Hazard>();
-    Signature hazard_signature;
-    hazard_signature.set(c.get_component_type<Component_Hazard>()); // Operate only on hazards
-    c.set_system_signature<System_Hazard>(hazard_signature);
+    // Point system setup
+    point = c.register_system<System_Point>();
+    Signature point_signature;
+    point_signature.set(c.get_component_type<Component_Point>()); // Operate only on points
+    c.set_system_signature<System_Point>(point_signature);
 
     // Agent system setup
     agent = c.register_system<System_Agent>();
@@ -231,6 +231,8 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     Signature mob_ai_signature;
     mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mobs
     c.set_system_signature<System_Mob_AI>(mob_ai_signature);
+
+    mob_ai->init();
 
     // Load backgrounds
     background_textures.resize(background_names.size());
@@ -295,12 +297,16 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Sub-steps
     for (int ss = 0; ss < sub_steps; ss++) {
         // Update systems
-        bool alive = agent->update(dt, action);
+        agent->update(dt, action);
+        bool dead = mob_ai->update(dt, rng);
+
+        point->update();
+
         sprite_render->update(dt);
 
-        step_data.reward.f = (!alive) * -10.0f;
+        step_data.reward.f = point->point_delta * 0.04f + (point->num_points_available == 0) * 10.0f;
 
-        step_data.terminated = !alive;
+        step_data.terminated = dead || (point->num_points_available == 0);
         step_data.truncated = false;
 
         if (step_data.terminated)
@@ -425,8 +431,11 @@ void reset() {
 
     current_background_offset_x = dist01(rng);
 
-    // Clear before next render to remove now destroyed entities from previous episode
-    sprite_render->clear_render();
+    // Reset systems
+    agent->reset();
+    mob_ai->reset();
+    sprite_render->reset();
+    point->reset();
 
     // Set camera
     gr.camera_position.x = tilemap->get_width() * 0.5f * unit_to_pixels;

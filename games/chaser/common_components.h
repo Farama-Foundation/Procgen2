@@ -21,7 +21,7 @@ struct Component_Dynamics {
 
 // AI
 struct Component_Mob_AI {
-
+    float hatch_timer = 0.0f;
 };
 
 // Sprites
@@ -46,8 +46,9 @@ struct Component_Animation { // Requires a Component_Sprite as well in order to 
     float t = 0.0f;
 };
 
-// Reset-triggering
-struct Component_Hazard {};
+struct Component_Point {
+    bool is_orb = false;
+};
 
 struct Component_Agent {
     int action = 0;

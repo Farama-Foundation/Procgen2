@@ -63,6 +63,48 @@ void System_Sprite_Render::render(Sprite_Render_Mode mode) {
     }
 }
 
+void System_Point::update() {
+    std::shared_ptr<System_Agent> agent = c.system_manager.get_system<System_Agent>();
+    const auto &agent_transform = c.get_component<Component_Transform>(agent->get_info().entity);
+    const auto &agent_collision = c.get_component<Component_Collision>(agent->get_info().entity);
+
+    std::shared_ptr<System_Mob_AI> mob_ai = c.system_manager.get_system<System_Mob_AI>();
+
+    Rectangle agent_rect = agent_collision.bounds;
+    agent_rect.x += agent_transform.position.x;
+    agent_rect.y += agent_transform.position.y;
+
+    num_points_available = 0;
+    point_delta = 0;
+
+    std::vector<Entity> to_destroy;
+
+    for (auto const &e : entities) {
+        auto &transform = c.get_component<Component_Transform>(e);
+        auto &collision = c.get_component<Component_Collision>(e);
+        auto &point = c.get_component<Component_Point>(e);
+
+        Rectangle rect = collision.bounds;
+        rect.x += transform.position.x;
+        rect.y += transform.position.y;
+
+        if (check_collision(agent_rect, rect)) {
+            if (point.is_orb)
+                mob_ai->eat();
+                
+            num_points_collected++;
+            point_delta++;
+
+            to_destroy.push_back(e);
+        }
+        else
+            num_points_available++;
+    }
+
+    for (int i = 0; i < to_destroy.size(); i++)
+        c.destroy_entity(to_destroy[i]);
+}
+
 void System_Mob_AI::init() {
     anim_textures.resize(4);
 
@@ -72,24 +114,32 @@ void System_Mob_AI::init() {
     anim_textures[3].load("assets/misc_assets/enemyWalking_1b.png");
 }
 
-void System_Mob_AI::update(float dt, std::mt19937 &rng) {
+bool System_Mob_AI::update(float dt, std::mt19937 &rng) {
     const float hatch_time = 50.0f;
     const float anim_time = 1.0f;
 
-    const float speed_low = 0.25f;
-    const float speed_high = 0.5f;
+    const float speed_low = 0.125f;
+    const float speed_high = 0.25f;
+
+    bool player_hit = false;
 
     // Hatched only
-    if (hatch_timer >= hatch_time) {
-        std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
-        std::shared_ptr<System_Agent> agent = c.system_manager.get_system<System_Agent>();
+    std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
+    std::shared_ptr<System_Agent> agent = c.system_manager.get_system<System_Agent>();
 
-        const System_Agent::Agent_Info &info = agent->get_info();
+    const auto &agent_transform = c.get_component<Component_Transform>(agent->get_info().entity);
+    const auto &agent_collision = c.get_component<Component_Collision>(agent->get_info().entity);
 
-        std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+    Rectangle agent_rect = agent_collision.bounds;
+    agent_rect.x += agent_transform.position.x;
+    agent_rect.y += agent_transform.position.y;
 
-        for (auto const &e : entities) {
-            auto &mob_ai = c.get_component<Component_Mob_AI>(e);
+    std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
+    for (auto const &e : entities) {
+        auto &mob_ai = c.get_component<Component_Mob_AI>(e);
+
+        if (mob_ai.hatch_timer >= hatch_time) {
             auto &transform = c.get_component<Component_Transform>(e);
             auto &sprite = c.get_component<Component_Sprite>(e);
             auto &collision = c.get_component<Component_Collision>(e);
@@ -102,18 +152,18 @@ void System_Mob_AI::update(float dt, std::mt19937 &rng) {
                 if (anim_index < 3)
                     sprite.texture = &anim_textures[anim_index];
                 else // Flap up
-                    sprite.texture = &anim_textures[6 - anim_index];
+                    sprite.texture = &anim_textures[5 - anim_index];
 
-                speed = speed_low;
+                speed = speed_high;
             }
             else { // Running away
                 sprite.texture = &anim_textures[3];
 
-                speed = speed_high;
+                speed = speed_low;
             }
 
             bool at_junction = abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) +
-                abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) < speed;
+                abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) < speed * dt;
 
             // If not moving or at a junction
             if ((dynamics.velocity.x == 0.0f && dynamics.velocity.y == 0.0f) || at_junction) {
@@ -153,7 +203,11 @@ void System_Mob_AI::update(float dt, std::mt19937 &rng) {
                     // Choose direction of agent if possible
                     for (int i = 0; i < dir_possibilities.size(); i++) {
                         if (dir_possibilities[i]) {
-                            float manhattan_dist = abs(transform.position.x - info.position.x) + abs(transform.position.y - info.position.y);
+                            float manhattan_dist = abs(transform.position.x + directions[i].x - agent_transform.position.x) + abs(transform.position.y + directions[i].y - agent_transform.position.y);
+
+                            // Run away when eat timer is active
+                            if (eat_timer > 0.0f)
+                                manhattan_dist = -manhattan_dist;
 
                             if (manhattan_dist < min_dist) {
                                 min_dist = manhattan_dist;
@@ -181,9 +235,41 @@ void System_Mob_AI::update(float dt, std::mt19937 &rng) {
                 }
 
                 // Change direction
-                dynamics.velocity = directions[select_index];
+                dynamics.velocity.x = directions[select_index].x * speed;
+                dynamics.velocity.y = directions[select_index].y * speed;
+            }
+
+            transform.position.x += dynamics.velocity.x * dt;
+            transform.position.y += dynamics.velocity.y * dt;
+
+            Rectangle rect = collision.bounds;
+            rect.x += transform.position.x;
+            rect.y += transform.position.y;
+
+            if (check_collision(agent_rect, rect)) {
+                if (eat_timer == 0.0f)
+                    // Player loses
+                    player_hit = true;
+                else {
+                    // Respawn as an egg
+                    mob_ai.hatch_timer = 0.0f;
+
+                    // Set to egg sprite again
+                    Asset_Texture* texture = &manager_texture.get("assets/misc_assets/enemySpikey_1b.png");
+
+                    std::uniform_int_distribution<int> free_cell_dist(0, tilemap->free_cells.size() - 1);
+
+                    int free_cell_index = tilemap->free_cells[free_cell_dist(rng)];
+
+                    transform.position.x = free_cell_index / tilemap->get_height() + 0.5f;
+                    transform.position.y = free_cell_index % tilemap->get_height() + 0.5f;
+
+                    sprite.texture = texture;
+                }
             }
         }
+        else
+            mob_ai.hatch_timer += dt;
     }
 
     if (anim_timer < anim_time)
@@ -193,11 +279,10 @@ void System_Mob_AI::update(float dt, std::mt19937 &rng) {
         anim_index = (anim_index + 1) % 6;
     }
 
-    if (hatch_timer < hatch_time)
-        hatch_timer += dt;
-
     if (eat_timer > 0.0f)
         eat_timer = std::max(0.0f, eat_timer - dt);
+
+    return player_hit;
 }
 
 void System_Mob_AI::eat() {
@@ -217,6 +302,7 @@ bool System_Agent::update(float dt, int action) {
 
     // Get tile map system
     std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
+    std::shared_ptr<System_Point> point = c.system_manager.get_system<System_Point>();
 
     assert(entities.size() == 1); // Only one player
 
@@ -342,7 +428,7 @@ bool System_Agent::update(float dt, int action) {
             input_timer += dt;
 
         // Update info
-        info.position = transform.position;
+        info.entity = e;
     }
 
     return alive;

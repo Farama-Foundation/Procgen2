@@ -40,6 +40,7 @@ void System_Tilemap::spawn_orb(int tile_index) {
     c.add_component(e, Component_Transform{ .position{ pos } });
     c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=1.0f, .texture = texture });
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+    c.add_component(e, Component_Point{ .is_orb = true });
 }
 
 void System_Tilemap::spawn_point(int tile_index) {
@@ -54,7 +55,8 @@ void System_Tilemap::spawn_point(int tile_index) {
 
     c.add_component(e, Component_Transform{ .position{ pos } });
     c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=1.0f, .texture = texture });
-    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+    c.add_component(e, Component_Collision{ .bounds{ -0.3f, -0.3f, 0.6f, 0.6f }});
+    c.add_component(e, Component_Point{ .is_orb = false });
 }
 
 void System_Tilemap::spawn_egg(int tile_index) {

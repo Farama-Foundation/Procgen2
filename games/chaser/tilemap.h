@@ -47,8 +47,6 @@ private:
 
     std::vector<Tile_ID> tile_ids;
 
-    std::vector<int> free_cells; // Which cells have nothing in them
-
     int total_points = 0;
 
     void spawn_orb(int tile_index);
@@ -56,6 +54,8 @@ private:
     void spawn_egg(int tile_index);
 
 public:
+    std::vector<int> free_cells; // Which cells have nothing in them
+
     // Initialize the tilemap
     void init();
 
