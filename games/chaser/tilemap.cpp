@@ -70,6 +70,7 @@ void System_Tilemap::spawn_egg(int tile_index) {
     c.add_component(e, Component_Transform{ .position{ pos } });
     c.add_component(e, Component_Sprite{ .position{ -0.5f, -0.5f }, .scale=1.0f, .texture = texture });
     c.add_component(e, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+    c.add_component(e, Component_Dynamics{});
     c.add_component(e, Component_Mob_AI{});
 }
 

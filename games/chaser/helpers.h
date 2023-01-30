@@ -26,3 +26,10 @@ bool check_collision(const Rectangle &r1, const Rectangle &r2);
 Rectangle get_collision_overlap(const Rectangle &r1, const Rectangle &r2);
 
 std::string to_lower(std::string s);
+
+inline int sign(float x) {
+    if (x == 0.0f)
+        return 0;
+
+    return (x > 0.0f) * 2 - 1;
+}

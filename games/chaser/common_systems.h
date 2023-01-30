@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <random>
 
 // -------------------- Sprites ---------------------
 //
@@ -42,14 +43,42 @@ public:
 
 // Enemy controller
 class System_Mob_AI : public System {
+private:
+    float hatch_timer = 0.0f;
+    float anim_timer = 0.0f;
+    int anim_index = 0;
+
+    float eat_timer = 0.0f;
+
+    std::vector<Asset_Texture> anim_textures;
+    std::array<bool, 4> dir_possibilities;
+
+    static constexpr std::array<Vector2, 4> directions = {
+        Vector2{ -1.0f, 0.0f },
+        Vector2{ 1.0f, 0.0f },
+        Vector2{ 0.0f, -1.0f },
+        Vector2{ 0.0f, 1.0f }
+    };
+
 public:
-    void update(float dt);
+    void init();
+
+    void update(float dt, std::mt19937 &rng);
+
+    void eat();
 };
 
 // --------------------- Player --------------------
 
 class System_Agent : public System {
+public:
+    struct Agent_Info {
+        Vector2 position = Vector2{ 0.0f, 0.0f };
+    };
+
 private:
+    Agent_Info info;
+
     // Agent textures
     Asset_Texture agent_texture;
 
@@ -61,4 +90,8 @@ public:
     // Returns alive status
     bool update(float dt, int action);
     void render();
+
+    Agent_Info &get_info() const {
+        return info;
+    }
 };

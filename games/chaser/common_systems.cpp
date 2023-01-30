@@ -63,8 +63,145 @@ void System_Sprite_Render::render(Sprite_Render_Mode mode) {
     }
 }
 
-void System_Mob_AI::update(float dt) {
-    // Enemy AI
+void System_Mob_AI::init() {
+    anim_textures.resize(4);
+
+    anim_textures[0].load("assets/misc_assets/enemyFlying_1.png");
+    anim_textures[1].load("assets/misc_assets/enemyFlying_2.png");
+    anim_textures[2].load("assets/misc_assets/enemyFlying_3.png");
+    anim_textures[3].load("assets/misc_assets/enemyWalking_1b.png");
+}
+
+void System_Mob_AI::update(float dt, std::mt19937 &rng) {
+    const float hatch_time = 50.0f;
+    const float anim_time = 1.0f;
+
+    const float speed_low = 0.25f;
+    const float speed_high = 0.5f;
+
+    // Hatched only
+    if (hatch_timer >= hatch_time) {
+        std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
+        std::shared_ptr<System_Agent> agent = c.system_manager.get_system<System_Agent>();
+
+        const System_Agent::Agent_Info &info = agent->get_info();
+
+        std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
+        for (auto const &e : entities) {
+            auto &mob_ai = c.get_component<Component_Mob_AI>(e);
+            auto &transform = c.get_component<Component_Transform>(e);
+            auto &sprite = c.get_component<Component_Sprite>(e);
+            auto &collision = c.get_component<Component_Collision>(e);
+            auto &dynamics = c.get_component<Component_Dynamics>(e);
+
+            float speed;
+
+            if (eat_timer == 0.0f) { // Eat timer is depleted
+                // Choose texture - flap down
+                if (anim_index < 3)
+                    sprite.texture = &anim_textures[anim_index];
+                else // Flap up
+                    sprite.texture = &anim_textures[6 - anim_index];
+
+                speed = speed_low;
+            }
+            else { // Running away
+                sprite.texture = &anim_textures[3];
+
+                speed = speed_high;
+            }
+
+            bool at_junction = abs(transform.position.x - (static_cast<int>(transform.position.x) + 0.5f)) +
+                abs(transform.position.y - (static_cast<int>(transform.position.y) + 0.5f)) < speed;
+
+            // If not moving or at a junction
+            if ((dynamics.velocity.x == 0.0f && dynamics.velocity.y == 0.0f) || at_junction) {
+                int dir_index = 0;
+                int num_possibilities = 0;
+
+                // Scan possible moves 
+                for (int dx = -1; dx <= 1; dx += 2) {
+                    Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) + dx, tilemap->get_height() - 1 - static_cast<int>(transform.position.y)); 
+
+                    dir_possibilities[dir_index] = (id == empty && dx != -sign(dynamics.velocity.x));
+
+                    if (dir_possibilities[dir_index])
+                        num_possibilities++;
+
+                    dir_index++;
+                }
+
+                for (int dy = -1; dy <= 1; dy += 2) {
+                    Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), tilemap->get_height() - 1 - (static_cast<int>(transform.position.y) + dy)); 
+
+                    dir_possibilities[dir_index] = (id == empty && dy != -sign(dynamics.velocity.y));
+
+                    if (dir_possibilities[dir_index])
+                        num_possibilities++;
+
+                    dir_index++;
+                }
+
+                bool be_aggressive = dist01(rng) < 0.5f;
+
+                int select_index = 0;
+
+                if (be_aggressive) {
+                    float min_dist = 999999.0f;
+
+                    // Choose direction of agent if possible
+                    for (int i = 0; i < dir_possibilities.size(); i++) {
+                        if (dir_possibilities[i]) {
+                            float manhattan_dist = abs(transform.position.x - info.position.x) + abs(transform.position.y - info.position.y);
+
+                            if (manhattan_dist < min_dist) {
+                                min_dist = manhattan_dist;
+                                select_index = i;
+                            }
+                        }
+                    }
+                }
+                else {
+                    // Roulette wheel selection of a possibility
+                    std::uniform_int_distribution<int> cusp_dist(0, num_possibilities - 1);
+
+                    int rand_cusp = cusp_dist(rng);
+
+                    int sum_so_far = 0;
+
+                    for (int i = 0; i < dir_possibilities.size(); i++) {
+                        sum_so_far += dir_possibilities[i];
+
+                        if (sum_so_far > rand_cusp) {
+                            select_index = i;
+                            break;
+                        }
+                    }
+                }
+
+                // Change direction
+                dynamics.velocity = directions[select_index];
+            }
+        }
+    }
+
+    if (anim_timer < anim_time)
+        anim_timer += dt;
+    else {
+        anim_timer -= anim_time; // Reset with overflow
+        anim_index = (anim_index + 1) % 6;
+    }
+
+    if (hatch_timer < hatch_time)
+        hatch_timer += dt;
+
+    if (eat_timer > 0.0f)
+        eat_timer = std::max(0.0f, eat_timer - dt);
+}
+
+void System_Mob_AI::eat() {
+    eat_timer = 75.0f;
 }
 
 void System_Agent::init() {
@@ -203,6 +340,9 @@ bool System_Agent::update(float dt, int action) {
             agent.next_velocity = { 0.0f, 0.0f };
         else
             input_timer += dt;
+
+        // Update info
+        info.position = transform.position;
     }
 
     return alive;
