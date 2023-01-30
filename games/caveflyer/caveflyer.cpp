@@ -57,66 +57,25 @@ int current_map_theme = 0;
 
 // Big list of different background images
 std::vector<std::string> background_names {
-    "assets/platform_backgrounds/alien_bg.png",
-    "assets/platform_backgrounds/another_world_bg.png",
-    "assets/platform_backgrounds/back_cave.png",
-    "assets/platform_backgrounds/caverns.png",
-    "assets/platform_backgrounds/cyberpunk_bg.png",
-    "assets/platform_backgrounds/parallax_forest.png",
-    "assets/platform_backgrounds/scifi_bg.png",
-    "assets/platform_backgrounds/scifi2_bg.png",
-    "assets/platform_backgrounds/living_tissue_bg.png",
-    "assets/platform_backgrounds/airadventurelevel1.png",
-    "assets/platform_backgrounds/airadventurelevel2.png",
-    "assets/platform_backgrounds/airadventurelevel3.png",
-    "assets/platform_backgrounds/airadventurelevel4.png",
-    "assets/platform_backgrounds/cave_background.png",
-    "assets/platform_backgrounds/blue_desert.png",
-    "assets/platform_backgrounds/blue_grass.png",
-    "assets/platform_backgrounds/blue_land.png",
-    "assets/platform_backgrounds/blue_shroom.png",
-    "assets/platform_backgrounds/colored_desert.png",
-    "assets/platform_backgrounds/colored_grass.png",
-    "assets/platform_backgrounds/colored_land.png",
-    "assets/platform_backgrounds/colored_shroom.png",
-    "assets/platform_backgrounds/landscape1.png",
-    "assets/platform_backgrounds/landscape2.png",
-    "assets/platform_backgrounds/landscape3.png",
-    "assets/platform_backgrounds/landscape4.png",
-    "assets/platform_backgrounds/battleback1.png",
-    "assets/platform_backgrounds/battleback2.png",
-    "assets/platform_backgrounds/battleback3.png",
-    "assets/platform_backgrounds/battleback4.png",
-    "assets/platform_backgrounds/battleback5.png",
-    "assets/platform_backgrounds/battleback6.png",
-    "assets/platform_backgrounds/battleback7.png",
-    "assets/platform_backgrounds/battleback8.png",
-    "assets/platform_backgrounds/battleback9.png",
-    "assets/platform_backgrounds/battleback10.png",
-    "assets/platform_backgrounds/sunrise.png",
-    "assets/platform_backgrounds_2/beach1.png",
-    "assets/platform_backgrounds_2/beach2.png",
-    "assets/platform_backgrounds_2/beach3.png",
-    "assets/platform_backgrounds_2/beach4.png",
-    "assets/platform_backgrounds_2/fantasy1.png",
-    "assets/platform_backgrounds_2/fantasy2.png",
-    "assets/platform_backgrounds_2/fantasy3.png",
-    "assets/platform_backgrounds_2/fantasy4.png",
-    "assets/platform_backgrounds_2/candy1.png",
-    "assets/platform_backgrounds_2/candy2.png",
-    "assets/platform_backgrounds_2/candy3.png",
-    "assets/platform_backgrounds_2/candy4.png"
+    "space_backgrounds/deep_space_01.png",
+    "space_backgrounds/spacegen_01.png",
+    "space_backgrounds/milky_way_01.png",
+    "space_backgrounds/ez_space_lite_01.png",
+    "space_backgrounds/meyespace_v1_01.png",
+    "space_backgrounds/eye_nebula_01.png",
+    "space_backgrounds/deep_sky_01.png",
+    "space_backgrounds/space_nebula_01.png",
+    "space_backgrounds/Background-1.png",
+    "space_backgrounds/Background-2.png",
+    "space_backgrounds/Background-3.png",
+    "space_backgrounds/Background-4.png",
+    "space_backgrounds/parallax-space-backgound.png"
 };
 
 std::vector<Asset_Texture> background_textures;
 
 int current_background_index = 0;
 float current_background_offset_x = 0.0f;
-
-// Textures for compass
-Asset_Texture compass_circle;
-Asset_Texture compass_needle;
-Asset_Texture compass_bar;
 
 // Forward declarations
 void render_game(bool is_obs);
@@ -293,11 +252,6 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     for (int i = 0; i < background_names.size(); i++)
         background_textures[i].load(background_names[i]);
 
-    // Compass textures
-    compass_circle.load("assets/custom/jumper_compass_circle.png");
-    compass_needle.load("assets/custom/jumper_compass_needle.png");
-    compass_bar.load("assets/custom/jumper_compass_bar.png");
-
     // Reset spawns entities while generating map
     reset();
 
@@ -469,44 +423,6 @@ void render_game(bool is_obs) {
     particles->render();
     sprite_render->render(positive_z);
     agent->render();
-
-    // Draw compass
-    const float compass_size = 200.0f;
-    const Vector2 compass_offset{ -32.0f, 32.0f };
-
-    Vector2 to_goal = agent->getInfo().to_goal;
-
-    float angle = std::atan2(to_goal.y, to_goal.x) * 180.0f / M_PI;
-    float dist = std::sqrt(to_goal.x * to_goal.x + to_goal.y * to_goal.y);
-    float dist_inv = 1.0f / std::max(0.0001f, dist);
-    Vector2 dir = Vector2{ to_goal.x * dist_inv, to_goal.y * dist_inv };
-    float ratio = std::min(1.0f, dist / (tilemap->get_width() * 1.414f));
-
-    // Compass circle
-    {
-        SDL_FRect dst_rect{ static_cast<float>(width) - compass_size * game_zoom + compass_offset.x * game_zoom, compass_offset.y * game_zoom, compass_size * game_zoom, compass_size * game_zoom };
-
-        SDL_RenderCopyExF(gr.get_renderer(), is_obs ? compass_circle.obs_texture : compass_circle.window_texture, NULL, &dst_rect, 0.0f, NULL, SDL_FLIP_NONE);
-    }
-
-    // Compass needle
-    {
-
-        SDL_FRect dst_rect{ static_cast<float>(width) - compass_size * 0.75f * game_zoom + compass_offset.x * game_zoom, compass_size * 0.5f * game_zoom + compass_offset.y * game_zoom, compass_size * 0.5f * game_zoom, compass_size * 0.1f * game_zoom };
-
-        dst_rect.x += compass_size * 0.25f * dir.x * game_zoom;
-        dst_rect.y += compass_size * 0.25f * dir.y * game_zoom;
-
-        SDL_RenderCopyExF(gr.get_renderer(), is_obs ? compass_needle.obs_texture : compass_needle.window_texture, NULL, &dst_rect, angle, NULL, SDL_FLIP_NONE);
-    }
-
-    // Compass bar
-    {
-
-        SDL_FRect dst_rect{ static_cast<float>(width) - compass_size * game_zoom + compass_offset.x * game_zoom, compass_size * game_zoom + compass_offset.y * game_zoom, compass_size * game_zoom * ratio, compass_size * 0.15f * game_zoom };
-
-        SDL_RenderCopyExF(gr.get_renderer(), is_obs ? compass_bar.obs_texture : compass_bar.window_texture, NULL, &dst_rect, 0.0f, NULL, SDL_FLIP_NONE);
-    }
 }
 
 void reset() {

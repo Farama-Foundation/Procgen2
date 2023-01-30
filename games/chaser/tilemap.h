@@ -37,7 +37,7 @@ public:
     };
 
     struct Config {
-        Distribution_Mode mode = extreme_mode;
+        Distribution_Mode mode = easy_mode;
     };
 
 private:

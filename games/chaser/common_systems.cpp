@@ -174,7 +174,7 @@ bool System_Mob_AI::update(float dt, std::mt19937 &rng) {
                 for (int dx = -1; dx <= 1; dx += 2) {
                     Tile_ID id = tilemap->get(static_cast<int>(transform.position.x) + dx, tilemap->get_height() - 1 - static_cast<int>(transform.position.y)); 
 
-                    dir_possibilities[dir_index] = (id == empty && dx != -sign(dynamics.velocity.x));
+                    dir_possibilities[dir_index] = (id != wall && dx != -sign(dynamics.velocity.x));
 
                     if (dir_possibilities[dir_index])
                         num_possibilities++;
@@ -185,7 +185,7 @@ bool System_Mob_AI::update(float dt, std::mt19937 &rng) {
                 for (int dy = -1; dy <= 1; dy += 2) {
                     Tile_ID id = tilemap->get(static_cast<int>(transform.position.x), tilemap->get_height() - 1 - (static_cast<int>(transform.position.y) + dy)); 
 
-                    dir_possibilities[dir_index] = (id == empty && dy != -sign(dynamics.velocity.y));
+                    dir_possibilities[dir_index] = (id != wall && dy != -sign(dynamics.velocity.y));
 
                     if (dir_possibilities[dir_index])
                         num_possibilities++;
@@ -217,6 +217,8 @@ bool System_Mob_AI::update(float dt, std::mt19937 &rng) {
                     }
                 }
                 else {
+                    assert(num_possibilities > 0);
+
                     // Roulette wheel selection of a possibility
                     std::uniform_int_distribution<int> cusp_dist(0, num_possibilities - 1);
 
