@@ -8,7 +8,7 @@ import time
 width = 512
 height = 512
 
-env = CEnv("games/jumper/build/libJumper.so", options={ "width": width, "height": height })
+env = CEnv("games/maze/build/libMaze.so", options={ "width": width, "height": height })
 
 print(env.observation_space)
 
