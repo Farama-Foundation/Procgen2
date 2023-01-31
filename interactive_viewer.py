@@ -9,7 +9,6 @@ width = 512
 height = 512
 
 env = CEnv("games/maze/build/libMaze.so", options={ "width": width, "height": height })
-# env = CEnv("games/jumper/build/libJumper.so", options={ "width": width, "height": height })
 
 print(env.observation_space)
 
@@ -39,14 +38,14 @@ while running:
 
     force_reset = False
 
-    if ks[pygame.K_p] and not ks_prev[pygame.K_p]:
+    if ks[pygame.K_r] and not ks_prev[pygame.K_r]:
         force_reset = True
 
     action = 0
 
     if ks[pygame.K_a]:
         action = 0
-    elif ks[pygame.K_s]:
+    elif ks[pygame.K_d]:
         action = 6
     else:
         action = 4
@@ -54,14 +53,14 @@ while running:
     if action != 4:
         if ks[pygame.K_w]:
             action += 2
-        elif ks[pygame.K_r]:
+        elif ks[pygame.K_s]:
             action += 0
         else:
             action += 1
     else:
         if ks[pygame.K_w]:
             action = 5
-        elif ks[pygame.K_r]:
+        elif ks[pygame.K_s]:
             action = 3
         else:
             action = 4
