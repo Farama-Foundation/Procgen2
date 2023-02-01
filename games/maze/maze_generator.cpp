@@ -44,13 +44,44 @@ void Maze_Generator::set_free_cell(int x, int y) {
     }
 }
 
+// Classical path compression
+// int Maze_Generator::find_id_of_set(int cell) {
+//     int parent = cell_sets_indices[cell];
+//     if (parent == cell) {
+//         return cell;
+//     } else {
+//         cell_sets_indices[cell] = find_id_of_set(parent);
+//         return cell_sets_indices[cell];
+//     }
+// }
+
+// Tarjan-van Leeuwen path splitting
+// int Maze_Generator::find_id_of_set(int cell) {
+//     int curr_cell = cell;
+//     while (cell_sets_indices[curr_cell] != curr_cell) {
+//         int parent = cell_sets_indices[curr_cell];
+//         cell_sets_indices[curr_cell] = cell_sets_indices[parent];
+//         curr_cell = parent;
+//     }
+//     return curr_cell;
+// }
+
+// Tarjan-van Leeuwen path halving
+int Maze_Generator::find_id_of_set(int cell) {
+    int curr_cell = cell;
+    while (cell_sets_indices[curr_cell] != curr_cell) {
+        curr_cell = cell_sets_indices[curr_cell] = cell_sets_indices[cell_sets_indices[curr_cell]];
+    }
+    return curr_cell;
+}
+
 void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937 &rng) {
     this->maze_width = maze_width;
     this->maze_height = maze_height;
     array_width = maze_width + 2*maze_offset; // Padding
     array_height = maze_height + 2*maze_offset; // Padding
 
-    cell_sets.resize(array_width * array_height);
+    cell_sets_ranks.resize(array_width * array_height);
     cell_sets_indices.resize(array_width * array_height);
     free_cells.resize(array_width * array_height);
     grid.clear();
@@ -68,18 +99,14 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
     num_free_cells = 0;
     free_cell_set.clear();
 
-    std::unordered_set<int> *s0 = &cell_sets[0];
-    s0->clear();
-    s0->insert(0);
     cell_sets_indices[0] = 0;
+    cell_sets_ranks[0] = 0;
 
     int maze_size = maze_width * maze_height;
 
     for (int i = 1; i < maze_size; i++) {
-        std::unordered_set<int> *s1 = &cell_sets[i];
-        s1->clear();
-        s1->insert(i);
         cell_sets_indices[i] = i;
+        cell_sets_ranks[i] = 0;
     }
 
     for (int i = 1; i < maze_width; i += 2) {
@@ -103,10 +130,8 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
 
         Wall wall = walls[n];
 
-        int s0_index = cell_sets_indices[wall.y1 + maze_height * wall.x1];
-        s0 = &cell_sets[s0_index];
-        int s1_index = cell_sets_indices[wall.y2 + maze_height * wall.x2];
-        std::unordered_set<int> *s1 = &cell_sets[s1_index];
+        int s0_index = find_id_of_set(wall.y1 + maze_height * wall.x1);
+        int s1_index = find_id_of_set(wall.y2 + maze_height * wall.x2);
 
         int x0 = (wall.x1 + wall.x2) / 2;
         int y0 = (wall.y1 + wall.y2) / 2;
@@ -119,11 +144,24 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
             set_free_cell(x0, y0);
             set_free_cell(wall.x2, wall.y2);
 
-            s1->insert(s0->begin(), s0->end());
-            s1->insert(center);
+            if (cell_sets_ranks[s0_index] > cell_sets_ranks[s1_index]) {
+                cell_sets_indices[s1_index] = s0_index;
+            } else {
+                cell_sets_indices[s0_index] = s1_index;
+                if (cell_sets_ranks[s0_index] == cell_sets_ranks[s1_index]) {
+                    cell_sets_ranks[s1_index]++;
+                }
+            }
 
-            for (std::unordered_set<int>::const_iterator it = s1->begin(); it != s1->end(); it++)
-                cell_sets_indices[*it] = s1_index;
+            // else if (cell_sets_ranks[cell0] == cell_sets_ranks[cell1]) {
+            //     cell_sets_indices[cell1] = cell0;
+            //     cell_sets_ranks[cell0]++;
+            // } else {
+            //     cell_sets_indices[cell0] = cell1;
+            // }
+
+            // for (std::unordered_set<int>::const_iterator it = s1->begin(); it != s1->end(); it++)
+            //     cell_sets_indices[*it] = s1_index;
         }
 
         walls.erase(walls.begin() + n);
