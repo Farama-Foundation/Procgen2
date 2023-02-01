@@ -56,18 +56,18 @@ void Maze_Generator::set_free_cell(int x, int y) {
 // }
 
 // Classical path compression -- iterative version
-int Maze_Generator::find_id_of_set(int cell) {
-    int id = cell;
-    while (cell_sets_indices[id] != id) {
-        id = cell_sets_indices[id];
-    }
-    while (cell_sets_indices[cell] != id) {
-        int parent = cell_sets_indices[cell];
-        cell_sets_indices[cell] = id;
-        cell = parent;
-    }
-    return id;
-}
+// int Maze_Generator::find_id_of_set(int cell) {
+//     int id = cell;
+//     while (cell_sets_indices[id] != id) {
+//         id = cell_sets_indices[id];
+//     }
+//     while (cell_sets_indices[cell] != id) {
+//         int parent = cell_sets_indices[cell];
+//         cell_sets_indices[cell] = id;
+//         cell = parent;
+//     }
+//     return id;
+// }
 
 // Tarjan-van Leeuwen path splitting
 // int Maze_Generator::find_id_of_set(int cell) {
@@ -81,13 +81,13 @@ int Maze_Generator::find_id_of_set(int cell) {
 // }
 
 // Tarjan-van Leeuwen path halving
-// int Maze_Generator::find_id_of_set(int cell) {
-//     int curr_cell = cell;
-//     while (cell_sets_indices[curr_cell] != curr_cell) {
-//         curr_cell = cell_sets_indices[curr_cell] = cell_sets_indices[cell_sets_indices[curr_cell]];
-//     }
-//     return curr_cell;
-// }
+int Maze_Generator::find_id_of_set(int cell) {
+    int curr_cell = cell;
+    while (cell_sets_indices[curr_cell] != curr_cell) {
+        curr_cell = cell_sets_indices[curr_cell] = cell_sets_indices[cell_sets_indices[curr_cell]];
+    }
+    return curr_cell;
+}
 
 void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937 &rng) {
     this->maze_width = maze_width;
