@@ -45,6 +45,10 @@ uint32_t rmask, gmask, bmask, amask;
 const int sub_steps = 1; // Physics sub-steps
 float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it this way due to the weird way the original procgen works w.r.t. physics
 
+// timeout
+const int timeout = 500;
+int curr_step = 0;
+
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
@@ -318,6 +322,9 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
         if (step_data.terminated)
             break;
     }
+    if (++curr_step >= timeout) {
+        step_data.terminated = true;
+    }
 
     // Render and grab pixels
     render_game(true);
@@ -431,6 +438,8 @@ void reset() {
     c.clear_entities();
 
     tilemap->regenerate(rng, tilemap_config);
+
+    curr_step = 0;
 
     // Determine background (themeing)
     std::uniform_int_distribution<int> background_dist(0, background_textures.size() - 1);
