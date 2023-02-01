@@ -160,8 +160,10 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
 
             if (cell_sets_ranks[s0_index] > cell_sets_ranks[s1_index]) {
                 cell_sets_indices[s1_index] = s0_index;
+                cell_sets_indices[center] = s0_index;
             } else {
                 cell_sets_indices[s0_index] = s1_index;
+                cell_sets_indices[center] = s1_index;
                 if (cell_sets_ranks[s0_index] == cell_sets_ranks[s1_index]) {
                     cell_sets_ranks[s1_index]++;
                 }
