@@ -112,7 +112,7 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
         int y0 = (wall.y1 + wall.y2) / 2;
         int center = y0 + maze_height * x0;
 
-        bool can_remove = (grid[get_index(x0 + maze_offset, y0 + maze_offset)] == WALL_CELL) && (s0_index != s1_index);
+        bool can_remove = (get(x0 + maze_offset, y0 + maze_offset) == WALL_CELL) && (s0_index != s1_index);
 
         if (can_remove) {
             set_free_cell(wall.x1, wall.y1);
@@ -188,6 +188,6 @@ void Maze_Generator::place_object(int obj_type, std::mt19937 &rng) {
     int obj_cell = free_cells[free_cell_idx];
     free_cells[free_cell_idx] = INVALID_CELL;
 
-    grid[obj_cell] = obj_type;
-    grid[get_index(obj_cell / maze_height + maze_offset, obj_cell % maze_width + maze_offset)] = obj_type;
+    // grid[obj_cell] = obj_type;
+    grid[get_index(obj_cell / maze_height + maze_offset, obj_cell % maze_height + maze_offset)] = obj_type;
 }
