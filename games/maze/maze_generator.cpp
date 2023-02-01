@@ -242,6 +242,6 @@ void Maze_Generator::place_object(int obj_type, std::mt19937 &rng) {
     int obj_cell = free_cells[free_cell_idx];
     free_cells[free_cell_idx] = INVALID_CELL;
 
-    grid[obj_cell] = obj_type;
-    grid[get_index(obj_cell / maze_height + maze_offset, obj_cell % maze_width + maze_offset)] = obj_type;
+    // grid[obj_cell] = obj_type;
+    grid[get_index(obj_cell / maze_height + maze_offset, obj_cell % maze_height + maze_offset)] = obj_type;
 }
