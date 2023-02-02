@@ -54,17 +54,12 @@ public:
 
 class System_Agent : public System {
 private:
-    // Agent textures
-    // Asset_Texture stand_texture;
-    // Asset_Texture jump_texture;
-    // Asset_Texture walk1_texture;
-    // Asset_Texture walk2_texture;
     Asset_Texture agent_texture;
 
 public:
     void init(); // Needs to load sprites
 
-    // Returns alive status (false if touched hazard), and whether touched a goal (carrot)
+    // Returns whether touched a goal (cheese)
     bool update(float dt, const std::shared_ptr<System_Goal> &goal, int action);
     void render();
 };

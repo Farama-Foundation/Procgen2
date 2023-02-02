@@ -44,43 +44,6 @@ void Maze_Generator::set_free_cell(int x, int y) {
     }
 }
 
-// Classical path compression
-// int Maze_Generator::find_id_of_set(int cell) {
-//     int parent = cell_sets_indices[cell];
-//     if (parent == cell) {
-//         return cell;
-//     } else {
-//         cell_sets_indices[cell] = find_id_of_set(parent);
-//         return cell_sets_indices[cell];
-//     }
-// }
-
-// Classical path compression -- iterative version
-// int Maze_Generator::find_id_of_set(int cell) {
-//     int id = cell;
-//     while (cell_sets_indices[id] != id) {
-//         id = cell_sets_indices[id];
-//     }
-//     while (cell_sets_indices[cell] != id) {
-//         int parent = cell_sets_indices[cell];
-//         cell_sets_indices[cell] = id;
-//         cell = parent;
-//     }
-//     return id;
-// }
-
-// Tarjan-van Leeuwen path splitting
-// int Maze_Generator::find_id_of_set(int cell) {
-//     int curr_cell = cell;
-//     while (cell_sets_indices[curr_cell] != curr_cell) {
-//         int parent = cell_sets_indices[curr_cell];
-//         cell_sets_indices[curr_cell] = cell_sets_indices[parent];
-//         curr_cell = parent;
-//     }
-//     return curr_cell;
-// }
-
-// Tarjan-van Leeuwen path halving
 int Maze_Generator::find_id_of_set(int cell) {
     int curr_cell = cell;
     while (cell_sets_indices[curr_cell] != curr_cell) {
@@ -158,6 +121,7 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
             set_free_cell(x0, y0);
             set_free_cell(wall.x2, wall.y2);
 
+            // Union by rank
             if (cell_sets_ranks[s0_index] > cell_sets_ranks[s1_index]) {
                 cell_sets_indices[s1_index] = s0_index;
                 cell_sets_indices[center] = s0_index;
@@ -168,16 +132,6 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
                     cell_sets_ranks[s1_index]++;
                 }
             }
-
-            // else if (cell_sets_ranks[cell0] == cell_sets_ranks[cell1]) {
-            //     cell_sets_indices[cell1] = cell0;
-            //     cell_sets_ranks[cell0]++;
-            // } else {
-            //     cell_sets_indices[cell0] = cell1;
-            // }
-
-            // for (std::unordered_set<int>::const_iterator it = s1->begin(); it != s1->end(); it++)
-            //     cell_sets_indices[*it] = s1_index;
         }
 
         walls.erase(walls.begin() + n);
@@ -229,19 +183,13 @@ void Maze_Generator::generate_maze_no_dead_ends(int maze_width, int maze_height,
 void Maze_Generator::place_object(int obj_type, std::mt19937 &rng) {
     std::uniform_int_distribution<int> n_dist(0, num_free_cells - 1);
     int free_cell_idx = n_dist(rng);
-    // std::uniform_int_distribution<int> n_dist(1, maze_width*maze_height - 1);
-    // int obj_cell = n_dist(rng);
 
     while (free_cells[free_cell_idx] == INVALID_CELL || free_cells[free_cell_idx] == START_CELL) {
         free_cell_idx = n_dist(rng);
     }
-    // while (grid[obj_cell] != EMPTY_CELL) {
-    //     obj_cell = n_dist(rng);
-    // }
 
     int obj_cell = free_cells[free_cell_idx];
     free_cells[free_cell_idx] = INVALID_CELL;
 
-    // grid[obj_cell] = obj_type;
     grid[get_index(obj_cell / maze_height + maze_offset, obj_cell % maze_height + maze_offset)] = obj_type;
 }
