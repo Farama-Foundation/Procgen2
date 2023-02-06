@@ -1,5 +1,5 @@
 #include "room_generator.h"
-#include <iostream>
+#include <assert.h>
 
 int Room_Generator::count_neighbors(int index, int type) {
     int x = index / grid_height;
@@ -36,6 +36,8 @@ void Room_Generator::update() {
 }
 
 void Room_Generator::build_room(int index, std::unordered_set<int> &room) {
+    assert(index >= 0 && index < grid.size());
+
     std::queue<int> current;
 
     if (grid[index] != 0) // Not space
@@ -57,7 +59,13 @@ void Room_Generator::build_room(int index, std::unordered_set<int> &room) {
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
                 if ((i == 0 || j == 0) && (i + j != 0)) {
-                    int next_index = get_index(x + i, y + j);
+                    int nx = x + i;
+                    int ny = y + j;
+
+                    if (nx < 0 || ny < 0 || nx >= grid_width || ny >= grid_height)
+                        continue;
+
+                    int next_index = get_index(nx, ny);
 
                     if (room.find(next_index) == room.end() && grid[next_index] == 0) {
                         current.push(next_index);
@@ -71,14 +79,12 @@ void Room_Generator::build_room(int index, std::unordered_set<int> &room) {
 
 void Room_Generator::find_path(int src, int dst, std::vector<int> &path) {
     std::unordered_set<int> covered;
-    std::vector<int> expanded;
-    std::vector<int> parents;
 
     if (grid[src] != 0) // Not space
         return;
 
-    expanded.push_back(src);
-    parents.push_back(-1);
+    std::vector<int> expanded{ src };
+    std::vector<int> parents{ -1 };
 
     int search_index = 0;
 
@@ -97,6 +103,12 @@ void Room_Generator::find_path(int src, int dst, std::vector<int> &path) {
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
                 if ((i == 0 || j == 0) && (i + j != 0)) {
+                    int nx = x + i;
+                    int ny = y + j;
+
+                    if (nx < 0 || ny < 0 || nx >= grid_width || ny >= grid_height)
+                        continue;
+
                     int next_index = get_index(x + i, y + j);
 
                     if (covered.find(next_index) == covered.end() && grid[next_index] == 0) {
@@ -168,6 +180,12 @@ void Room_Generator::expand_room(std::unordered_set<int> &set, int n) {
             for (int i = -1; i <= 1; i++) {
                 for (int j = -1; j <= 1; j++) {
                     if (i != 0 || j != 0) {
+                        int nx = x + i;
+                        int ny = y + j;
+
+                        if (nx < 0 || ny < 0 || nx >= grid_width || ny >= grid_height)
+                            continue;
+
                         int next_index = get_index(x + i, y + j);
 
                         if (set.find(next_index) == set.end() && grid[next_index] == 0) {

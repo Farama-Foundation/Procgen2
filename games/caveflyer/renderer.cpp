@@ -79,6 +79,25 @@ void Renderer::render_texture(Asset_Texture* texture, const Vector2 &position, f
         SDL_SetTextureAlphaMod(current_texture, 255);
 }
 
+void Renderer::render_texture_rotated(Asset_Texture* texture, const Vector2 &position, float rotation, float scale, float alpha) {
+    SDL_Renderer* renderer = get_renderer();
+
+    SDL_FRect src_rect{ 0.0f, 0.0f, static_cast<float>(texture->width), static_cast<float>(texture->height) };
+
+    SDL_FRect dst_rect{ (position.x - camera_position.x) * camera_scale + camera_size.x * 0.5f, (position.y - camera_position.y) * camera_scale + camera_size.y * 0.5f,
+        texture->width * scale * camera_scale, texture->height * scale * camera_scale };
+
+    SDL_Texture* current_texture = rendering_obs ? texture->obs_texture : texture->window_texture;
+
+    if (alpha != 1.0f)
+        SDL_SetTextureAlphaMod(current_texture, 255 * alpha);
+
+    SDL_RenderCopyExF(renderer, rendering_obs ? texture->obs_texture : texture->window_texture, NULL, &dst_rect, rotation * 180.0f / M_PI, NULL, SDL_FLIP_NONE);
+
+    if (alpha != 1.0f)
+        SDL_SetTextureAlphaMod(current_texture, 255);
+}
+
 Renderer::~Renderer() {
 }
 

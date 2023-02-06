@@ -49,7 +49,7 @@ void System_Sprite_Render::render(Sprite_Render_Mode mode) {
 
 void System_Agent::init() {
     ship_texture.load("assets/misc_assets/playerShip1_red.png");
-    bullet_texture.load("assets/misc_assets/laserBlue09.png");
+    bullet_texture.load("assets/misc_assets/laserBlue02.png");
 
     explosion_textures.resize(5);
 
@@ -64,13 +64,13 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
     bool alive = true;
     bool achieved_goal = false;
 
-    const float max_speed = 0.5f;
-    const float mix = 0.2f;
-    const float spin_rate = 0.5f;
+    const float accel = 0.05f;
+    const float spin_rate = 0.05f;
     const float vel_decay = 0.1f;
     const float reverse_mul = 0.5f;
     const float bullet_time = 0.5f;
-    const float bullet_speed = 2.0f;
+    const float bullet_speed = 1.0f;
+    const float explosion_rate = 0.5f;
 
     // Get tile map system
     std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
@@ -88,24 +88,28 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         const auto &collision = c.get_component<Component_Collision>(e);
 
-        float movement_x = (agent.action == 7) - (agent.action == 1);
-        float movement_y = (agent.action == 3) - (agent.action == 5);
+        float movement_x = (agent.action == 6 || agent.action == 7 || agent.action == 8) - (agent.action == 0 || agent.action == 1 || agent.action == 2);
+        float movement_y =  (agent.action == 2 || agent.action == 5 || agent.action == 8) - (agent.action == 0 || agent.action == 3 || agent.action == 6);
         bool fire = agent.action == 9;
 
         if (movement_y < 0.0f)
             movement_y *= reverse_mul;
 
-        transform.rotation += spin_rate * dt;
+        transform.rotation += movement_x * spin_rate * dt;
 
         Vector2 dir{ std::cos(transform.rotation), std::sin(transform.rotation) };
 
         // If fire
         if (fire) {
             if (bullet_timer == 0.0f && num_bullets < bullets.size()) {
-                bullets[next_bullet].rotation = transform.rotation;
-                bullets[next_bullet].vel = { dir.x * bullet_speed, dir.y * bullet_speed };
-                bullets[next_bullet].pos = transform.position;
-                bullets[next_bullet].frame = 0.0f; // First frame (bullet)
+                bullet_timer = bullet_time;
+
+                Bullet &bullet = bullets[next_bullet];
+
+                bullet.rotation = transform.rotation;
+                bullet.vel = { dir.x * bullet_speed, dir.y * bullet_speed };
+                bullet.pos = transform.position;
+                bullet.frame = 0.0f; // First frame (bullet)
 
                 next_bullet = (next_bullet + 1) % bullets.size();
                 num_bullets++;
@@ -114,7 +118,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
                 bullet_timer = std::max(0.0f, bullet_timer - dt);
         }
 
-        Vector2 acceleration{ dir.x * movement_y, dir.y * movement_y };
+        Vector2 acceleration{ dir.x * movement_y * accel, dir.y * movement_y * accel };
         
         dynamics.velocity.x += (acceleration.x - dynamics.velocity.x * vel_decay) * dt;
         dynamics.velocity.y += (acceleration.y - dynamics.velocity.y * vel_decay) * dt;
@@ -190,52 +194,60 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
             if (bullet.frame == -1.0f)
                 continue;
 
-            Rectangle world_collision{ bullet.pos.x - 0.01f, bullet.pos.y - 0.01f, 0.02f, 0.02f };
+            if (bullet.frame == 0.0f) {
+                Rectangle world_collision{ bullet.pos.x - 0.01f, bullet.pos.y - 0.01f, 0.02f, 0.02f };
 
-            std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
-                return (id == wall ? full : none);
-            });
+                std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
+                    return (id == wall ? full : none);
+                });
 
-            if (collision_data.second) {
-                // Set velocity to 0 and animate
-                bullet.vel = { 0.0f, 0.0f };
-                bullet.frame = 1.0f;
-            }
-
-            // If collide with hazard
-            for (Entity h : hazard->get_entities()) {
-                const Component_Hazard &hazard = c.get_component<Component_Hazard>(h);
-                
-                if (!hazard.destroyable)
-                    continue;
-
-                const Component_Transform &hazard_transform = c.get_component<Component_Transform>(h);
-                const Component_Collision &hazard_collision = c.get_component<Component_Collision>(h);
-
-                Rectangle hazard_rect{ hazard_transform.position.x + hazard_collision.bounds.x, hazard_transform.position.y + hazard_collision.bounds.y, hazard_collision.bounds.width, hazard_collision.bounds.height };
-
-                if (check_collision(world_collision, hazard_rect)) {
-                    num_bullets--;
-                    bullet.frame = -1.0f;
-
-                    break;
+                if (collision_data.second) {
+                    // Set velocity to 0 and animate
+                    bullet.vel = { 0.0f, 0.0f };
+                    bullet.frame = 1.0f;
                 }
-            }
 
-            if (bullet.frame == -1.0f)
-                continue;
+                std::vector<Entity> to_destroy;
+
+                // If collide with hazard
+                for (Entity h : hazard->get_entities()) {
+                    const Component_Hazard &hazard = c.get_component<Component_Hazard>(h);
+                    
+                    if (!hazard.destroyable)
+                        continue;
+
+                    const Component_Transform &hazard_transform = c.get_component<Component_Transform>(h);
+                    const Component_Collision &hazard_collision = c.get_component<Component_Collision>(h);
+
+                    Rectangle hazard_rect{ hazard_transform.position.x + hazard_collision.bounds.x, hazard_transform.position.y + hazard_collision.bounds.y, hazard_collision.bounds.width, hazard_collision.bounds.height };
+
+                    if (check_collision(world_collision, hazard_rect)) {
+                        // Set velocity to 0 and animate
+                        bullet.vel = { 0.0f, 0.0f };
+                        bullet.frame = 1.0f;
+
+                        // Destroy the hazard
+                        to_destroy.push_back(h);
+
+                        break;
+                    }
+                }
+
+                for (int i = 0; i < to_destroy.size(); i++)
+                    c.destroy_entity(to_destroy[i]);
+            }
 
             // Move
             bullet.pos.x += bullet.vel.x * dt;
             bullet.pos.y += bullet.vel.y * dt;
 
-            if (bullet.frame >= 6.0f) {
+            if (bullet.frame >= 5.0f) {
                 // Destroy
                 num_bullets--;
                 bullet.frame = -1.0f;
             }
             else if (bullet.frame >= 1.0f)
-                bullet.frame += dt;
+                bullet.frame += explosion_rate * dt;
         }
             
         // Enable particles on jump
@@ -256,16 +268,9 @@ void System_Agent::render() {
         auto const &dynamics = c.get_component<Component_Dynamics>(e);
 
         {
-            const float size = 1.0f;
+            const float size = 0.15f;
 
-            SDL_FRect dst_rect{ transform.position.x, transform.position.y, unit_to_pixels * size, unit_to_pixels * size };
-
-            Vector2 dir{ std::cos(transform.rotation), std::sin(transform.rotation) };
-
-            dst_rect.x -= dir.x * size * 0.5f;
-            dst_rect.y -= dir.y * size * 0.5f;
-
-            SDL_RenderCopyExF(gr.get_renderer(), gr.rendering_obs ? ship_texture.obs_texture : ship_texture.window_texture, NULL, &dst_rect, transform.rotation, NULL, SDL_FLIP_NONE);
+            gr.render_texture_rotated(&ship_texture, { transform.position.x * unit_to_pixels - size * ship_texture.width * 0.5f, transform.position.y * unit_to_pixels - size * ship_texture.height * 0.5f }, transform.rotation + M_PI * 0.5f, size);
         }
 
         // Render bullets
@@ -284,16 +289,9 @@ void System_Agent::render() {
             else
                 texture = &explosion_textures[static_cast<int>(bullet.frame - 1.0f)];
 
-            const float size = 1.0f;
+            const float size = 0.1f;
 
-            SDL_FRect dst_rect{ bullet.pos.x, bullet.pos.y, unit_to_pixels * size, unit_to_pixels * size };
-
-            Vector2 dir{ std::cos(bullet.rotation), std::sin(bullet.rotation) };
-
-            dst_rect.x -= dir.x * size * 0.5f;
-            dst_rect.y -= dir.y * size * 0.5f;
-
-            SDL_RenderCopyExF(gr.get_renderer(), gr.rendering_obs ? texture->obs_texture : texture->window_texture, NULL, &dst_rect, bullet.rotation, NULL, SDL_FLIP_NONE);
+            gr.render_texture_rotated(texture, { bullet.pos.x * unit_to_pixels - size * texture->width * 0.5f, bullet.pos.y * unit_to_pixels - size * texture->height * 0.5f }, bullet.rotation + M_PI * 0.5f, size);
         }
     }
 }
@@ -327,15 +325,25 @@ void System_Particles::update(float dt) {
             Particle &p = particles.particles[dead_index];
 
             p.life = particles.lifespan;
-            p.position.x = transform.position.x + particles.offset.x;
-            p.position.y = transform.position.y + particles.offset.y;
+
+            p.rotation = transform.rotation + M_PI * 0.5f;
+
+            float c = std::cos(p.rotation);
+            float s = std::sin(p.rotation);
+
+            p.dir = { -std::cos(transform.rotation), -std::sin(transform.rotation) };
+
+            Vector2 rotated_offset{ c * particles.offset.x - s * particles.offset.y, s * particles.offset.x + c * particles.offset.y };
+
+            p.position.x = transform.position.x + rotated_offset.x;
+            p.position.y = transform.position.y + rotated_offset.y;
         }
     }
 }
 
 void System_Particles::render() {
     const float base_alpha = 0.5f;
-    const float base_scale = 0.45f;
+    const float base_scale = 1.0f;
 
     for (auto const &e : entities) {
         auto const &particles = c.get_component<Component_Particles>(e);
@@ -350,9 +358,10 @@ void System_Particles::render() {
             
             float alpha = base_alpha * (1.0f - life_ratio);
             float scale = base_scale * (0.4f * life_ratio + 0.6f);
-            float offset_y = -life_ratio * 0.17f;
+            float shift = life_ratio * 2.0f;
+            float size = scale * unit_to_pixels / particle_texture.width;
 
-            gr.render_texture(&particle_texture, (Vector2){ p.position.x * unit_to_pixels - 0.5f * particle_texture.width * scale, (p.position.y + offset_y) * unit_to_pixels - 0.5f * particle_texture.height * scale }, scale * unit_to_pixels / particle_texture.width, alpha);
+            gr.render_texture_rotated(&particle_texture, (Vector2){ (p.position.x + p.dir.x * shift) * unit_to_pixels - size * particle_texture.width * 0.5f, (p.position.y + p.dir.y * shift) * unit_to_pixels - size * particle_texture.height * 0.5f }, p.rotation, size, alpha);
         }
     }
 }

@@ -43,7 +43,7 @@ void System_Tilemap::spawn_obstacle(int cell) {
     Asset_Texture* texture = &manager_texture.get("assets/misc_assets/meteorBrown_big1.png");
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.25f, -0.25f }, .scale=0.5f, .z = 1.0f, .texture = texture });
+    c.add_component(e, Component_Sprite{ .position{ -0.4f, -0.4f }, .scale=0.8f, .z = 1.0f, .texture = texture });
     c.add_component(e, Component_Hazard{ .destroyable = false });
     c.add_component(e, Component_Collision{ .bounds{ -0.25f, -0.25f, 0.5f, 0.5f }});
 }
@@ -59,7 +59,7 @@ void System_Tilemap::spawn_target(int cell) {
     Asset_Texture* texture = &manager_texture.get("assets/misc_assets/ufoRed2.png");
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.25f, -0.25f }, .scale=0.5f, .z = 1.0f, .texture = texture });
+    c.add_component(e, Component_Sprite{ .position{ -0.4f, -0.4f }, .scale=0.8f, .z = 1.0f, .texture = texture });
     c.add_component(e, Component_Hazard{ .destroyable = true });
     c.add_component(e, Component_Collision{ .bounds{ -0.25f, -0.25f, 0.5f, 0.5f }});
 }
@@ -94,9 +94,9 @@ void System_Tilemap::spawn_enemy(int cell, const Vector2 &agent_pos, std::mt1993
         vel.y = vel_component;
 
     c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Sprite{ .position{ -0.25f, -0.25f }, .scale=0.4f, .z = 1.0f, .texture = texture });
+    c.add_component(e, Component_Sprite{ .position{ -0.4f, -0.4f }, .scale=0.8f, .z = 1.0f, .texture = texture });
     c.add_component(e, Component_Hazard{ .destroyable = false });
-    c.add_component(e, Component_Collision{ .bounds{ -0.25f, -0.25f, 0.5f, 0.5f }});
+    c.add_component(e, Component_Collision{ .bounds{ -0.4f, -0.4f, 0.8f, 0.8f }});
     c.add_component(e, Component_Mob_AI{});
 }
 
@@ -179,9 +179,9 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     Vector2 goal_pos = { static_cast<float>(goal_x) + 0.5f, static_cast<float>(map_height - 1 - goal_y) + 0.5f };
 
     c.add_component(goal, Component_Transform{ .position{ goal_pos } });
-    c.add_component(goal, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = &manager_texture.get("assets/misc_assets/ufoGreen2.png") });
+    c.add_component(goal, Component_Sprite{ .position{ -0.4f, -0.4f }, .scale=0.8f, .z = 1.0f, .texture = &manager_texture.get("assets/misc_assets/ufoGreen2.png") });
     c.add_component(goal, Component_Goal{});
-    c.add_component(goal, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+    c.add_component(goal, Component_Collision{ .bounds{ -0.4f, -0.4f, 0.8f, 0.8f }});
 
     info.goal_pos = goal_pos;
 
@@ -191,10 +191,10 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     Entity agent = c.create_entity();
 
     c.add_component(agent, Component_Transform{ .position = agent_pos });
-    c.add_component(agent, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f } });
+    c.add_component(agent, Component_Collision{ .bounds{ -0.4f, -0.4f, 0.8f, 0.8f } });
     c.add_component(agent, Component_Dynamics{});
     c.add_component(agent, Component_Agent{});
-    c.add_component(agent, Component_Particles{ .particles = std::vector<Particle>(10), .offset{ 0.0f, -0.2f } });
+    c.add_component(agent, Component_Particles{ .particles = std::vector<Particle>(10), .offset{ 0.0f, 0.3f } });
 
     std::vector<int> goal_path;
     room_generator.find_path(agent_cell, goal_cell, goal_path);
@@ -247,7 +247,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
 
             // See if already have this index
             for (int j = 0; j < i; j++) {
-                if (obstacle_indices[i] == index) {
+                if (obstacle_indices[j] == index) {
                     index = (index + 1) % free_cells.size();
 
                     repeat_found = true;
@@ -256,7 +256,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
                 }
             }
         }
-        while (!repeat_found);
+        while (repeat_found);
 
         obstacle_indices[i] = index;
 

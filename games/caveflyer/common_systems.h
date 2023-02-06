@@ -77,6 +77,12 @@ public:
     // Returns alive status (false if touched hazard), and whether touched a goal (carrot)
     std::pair<bool, bool> update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
     void render();
+
+    void reset() {
+        next_bullet = 0;
+        num_bullets = 0;
+        bullet_timer = 0.0f;
+    }
 };
 
 // ------------------- Particles ------------------

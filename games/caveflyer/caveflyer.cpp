@@ -29,7 +29,7 @@ const int num_actions = 15;
 int window_width = 512;
 int window_height = 512;
 
-float game_zoom = 0.3f; // Base game zoom level
+float game_zoom = 0.5f; // Base game zoom level
 
 std::mt19937 rng;
 
@@ -53,23 +53,22 @@ std::shared_ptr<System_Agent> agent;
 std::shared_ptr<System_Particles> particles;
 
 System_Tilemap::Config tilemap_config;
-int current_map_theme = 0;
 
 // Big list of different background images
 std::vector<std::string> background_names {
-    "space_backgrounds/deep_space_01.png",
-    "space_backgrounds/spacegen_01.png",
-    "space_backgrounds/milky_way_01.png",
-    "space_backgrounds/ez_space_lite_01.png",
-    "space_backgrounds/meyespace_v1_01.png",
-    "space_backgrounds/eye_nebula_01.png",
-    "space_backgrounds/deep_sky_01.png",
-    "space_backgrounds/space_nebula_01.png",
-    "space_backgrounds/Background-1.png",
-    "space_backgrounds/Background-2.png",
-    "space_backgrounds/Background-3.png",
-    "space_backgrounds/Background-4.png",
-    "space_backgrounds/parallax-space-backgound.png"
+    "assets/space_backgrounds/deep_space_01.png",
+    "assets/space_backgrounds/spacegen_01.png",
+    "assets/space_backgrounds/milky_way_01.png",
+    "assets/space_backgrounds/ez_space_lite_01.png",
+    "assets/space_backgrounds/meyespace_v1_01.png",
+    "assets/space_backgrounds/eye_nebula_01.png",
+    "assets/space_backgrounds/deep_sky_01.png",
+    "assets/space_backgrounds/space_nebula_01.png",
+    "assets/space_backgrounds/Background-1.png",
+    "assets/space_backgrounds/Background-2.png",
+    "assets/space_backgrounds/Background-3.png",
+    "assets/space_backgrounds/Background-4.png",
+    "assets/space_backgrounds/parallax-space-backgound.png"
 };
 
 std::vector<Asset_Texture> background_textures;
@@ -200,7 +199,6 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Collision>();
     c.register_component<Component_Dynamics>();
     c.register_component<Component_Sprite>();
-    c.register_component<Component_Shootable>();
     c.register_component<Component_Mob_AI>();
     c.register_component<Component_Hazard>();
     c.register_component<Component_Goal>();
@@ -421,7 +419,7 @@ void render_game(bool is_obs) {
     gr.render_texture(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 64.0f * unit_to_pixels / background->height);
 
     sprite_render->render(negative_z);
-    tilemap->render(current_map_theme);
+    tilemap->render(0);
     particles->render();
     sprite_render->render(positive_z);
     agent->render();
@@ -441,11 +439,8 @@ void reset() {
 
     current_background_offset_x = dist01(rng);
 
-    // Determine themes
-    std::uniform_int_distribution<int> map_theme_dist(0, 3); // 4 themes
-
-    current_map_theme = map_theme_dist(rng);
-
     // Clear before next render to remove now destroyed entities from previous episode
     sprite_render->clear_render();
+
+    agent->reset();
 }

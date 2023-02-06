@@ -8,7 +8,7 @@ import time
 width = 512
 height = 512
 
-env = CEnv("games/chaser/build/libChaser.so", options={ "width": width, "height": height })
+env = CEnv("games/caveflyer/build/libCaveFlyer.so", options={ "width": width, "height": height })
 
 print(env.observation_space)
 
@@ -64,6 +64,10 @@ while running:
             action = 3
         else:
             action = 4
+
+    # Fire/Interact
+    if ks[pygame.K_e]:
+        action = 9
 
     obs, reward, term, trunc, info = env.step(action)
 
