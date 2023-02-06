@@ -111,7 +111,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
 
     // Generate maze with no dead ends
     Maze_Generator maze_generator;
-    maze_generator.generate_maze_no_dead_ends(world_dim, world_dim, rng);
+    maze_generator.generate_maze(world_dim, world_dim, rng);
 
     std::vector<std::vector<int>> quadrants;
     std::vector<int> orbs_for_quadrant;

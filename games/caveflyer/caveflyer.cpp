@@ -200,6 +200,8 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Collision>();
     c.register_component<Component_Dynamics>();
     c.register_component<Component_Sprite>();
+    c.register_component<Component_Shootable>();
+    c.register_component<Component_Mob_AI>();
     c.register_component<Component_Hazard>();
     c.register_component<Component_Goal>();
     c.register_component<Component_Agent>(); // Player

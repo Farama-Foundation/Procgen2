@@ -48,23 +48,29 @@ void System_Sprite_Render::render(Sprite_Render_Mode mode) {
 }
 
 void System_Agent::init() {
-    stand_texture.load("assets/misc_assets/bunny2_ready.png");
-    jump_texture.load("assets/misc_assets/bunny2_jump.png");
-    walk1_texture.load("assets/misc_assets/bunny2_walk1.png");
-    walk2_texture.load("assets/misc_assets/bunny2_walk2.png");
+    ship_texture.load("assets/misc_assets/playerShip1_red.png");
+    bullet_texture.load("assets/misc_assets/laserBlue09.png");
+
+    explosion_textures.resize(5);
+
+    for (int i = 0; i < explosion_textures.size(); i++)
+        explosion_textures[i].load("assets/misc_assets/explosion" + std::to_string(i + 1) + ".png");
+
+    // Max bullets
+    bullets.resize(32);
 }
 
 std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action) {
     bool alive = true;
     bool achieved_goal = false;
 
-    // Parameters
-    const float max_jump = 0.92f;
-    const float gravity = 0.1f;
     const float max_speed = 0.5f;
     const float mix = 0.2f;
-    const float air_control = 1.0f;
-    const float jump_cooldown = 3.0f;
+    const float spin_rate = 0.5f;
+    const float vel_decay = 0.1f;
+    const float reverse_mul = 0.5f;
+    const float bullet_time = 0.5f;
+    const float bullet_speed = 2.0f;
 
     // Get tile map system
     std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
@@ -82,35 +88,36 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         const auto &collision = c.get_component<Component_Collision>(e);
 
-        float movement_x = (agent.action == 6 || agent.action == 7 || agent.action == 8) - (agent.action == 0 || agent.action == 1 || agent.action == 2);
-        bool jump = (agent.action == 2 || agent.action == 5 || agent.action == 8);
-        bool fallthrough = (agent.action == 0 || agent.action == 3 || agent.action == 6);
+        float movement_x = (agent.action == 7) - (agent.action == 1);
+        float movement_y = (agent.action == 3) - (agent.action == 5);
+        bool fire = agent.action == 9;
 
-        // Velocity control
-        float mix_x = agent.on_ground ? mix : (mix * air_control);
+        if (movement_y < 0.0f)
+            movement_y *= reverse_mul;
 
-        dynamics.velocity.x += mix_x * (max_speed * movement_x - dynamics.velocity.x) * dt;
+        transform.rotation += spin_rate * dt;
 
-        if (std::abs(dynamics.velocity.x) < mix_x * max_speed * dt)
-            dynamics.velocity.x = 0.0f;
+        Vector2 dir{ std::cos(transform.rotation), std::sin(transform.rotation) };
 
-        if (agent.on_ground)
-            agent.jumps_left = 2;
+        // If fire
+        if (fire) {
+            if (bullet_timer == 0.0f && num_bullets < bullets.size()) {
+                bullets[next_bullet].rotation = transform.rotation;
+                bullets[next_bullet].vel = { dir.x * bullet_speed, dir.y * bullet_speed };
+                bullets[next_bullet].pos = transform.position;
+                bullets[next_bullet].frame = 0.0f; // First frame (bullet)
 
-        if (jump && agent.jumps_left > 0 && agent.jump_timer == 0.0f) {
-            dynamics.velocity.y = -max_jump;
-            agent.jumps_left--;
-            agent.jump_timer = jump_cooldown;
+                next_bullet = (next_bullet + 1) % bullets.size();
+                num_bullets++;
+            }
+            else
+                bullet_timer = std::max(0.0f, bullet_timer - dt);
         }
 
-        if (agent.jump_timer > 0.0f)
-            agent.jump_timer = std::max(0.0f, agent.jump_timer - dt);
-
-        dynamics.velocity.y += gravity * dt;
+        Vector2 acceleration{ dir.x * movement_y, dir.y * movement_y };
         
-        // Max fall speed is jump speed
-        if (std::abs(dynamics.velocity.y) > max_jump)
-            dynamics.velocity.y = (dynamics.velocity.y > 0.0f ? 1.0f : -1.0f) * max_jump;
+        dynamics.velocity.x += (acceleration.x - dynamics.velocity.x * vel_decay) * dt;
+        dynamics.velocity.y += (acceleration.y - dynamics.velocity.y * vel_decay) * dt;
 
         // Move
         transform.position.x += dynamics.velocity.x * dt;
@@ -120,13 +127,11 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
         Rectangle world_collision{ transform.position.x + collision.bounds.x, transform.position.y + collision.bounds.y, collision.bounds.width, collision.bounds.height };
 
         std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
-            return (id == wall_mid || id == wall_top ? full : none);
+            return (id == wall ? full : none);
         });
 
         // If was moved up, on ground
         Vector2 delta_position{ collision_data.first.x - world_collision.x, collision_data.first.y - world_collision.y };
-
-        agent.on_ground = delta_position.y < 0.0f && collision_data.second;
 
         // Correct position
         transform.position.x = collision_data.first.x - collision.bounds.x;
@@ -139,11 +144,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
         if (delta_position.x != 0.0f)
             dynamics.velocity.x = 0.0f;
 
-        // If hit ceiling
-        if (delta_position.y > 0.0f && collision_data.second)
-            dynamics.velocity.y = 0.0f;
-        
-        if (agent.on_ground)
+        if (delta_position.y != 0.0f)
             dynamics.velocity.y = 0.0f;
 
         // Go through all hazards
@@ -178,24 +179,69 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         // Camera follows the agent
         gr.camera_position.x = transform.position.x * unit_to_pixels;
-        gr.camera_position.y = (transform.position.y - 0.5f) * unit_to_pixels;
+        gr.camera_position.y = transform.position.y * unit_to_pixels;
 
-        // Animation cycle
-        agent.t += agent.rate * dt;
-        agent.t = std::fmod(agent.t, 1.0f);
+        // Control bullets
+        for (int i = 0; i < num_bullets; i++) {
+            int bullet_index = (bullets.size() + next_bullet - 1 - i) % bullets.size();
 
-        if (movement_x > 0.0f)
-            agent.face_forward = true;
-        else if (movement_x < 0.0f)
-            agent.face_forward = false;
+            Bullet &bullet = bullets[bullet_index];
 
-        // Set info
-        info.to_goal = Vector2{ tilemap->getInfo().goal_pos.x - transform.position.x, tilemap->getInfo().goal_pos.y - transform.position.y };
+            if (bullet.frame == -1.0f)
+                continue;
 
+            Rectangle world_collision{ bullet.pos.x - 0.01f, bullet.pos.y - 0.01f, 0.02f, 0.02f };
+
+            std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
+                return (id == wall ? full : none);
+            });
+
+            if (collision_data.second) {
+                // Set velocity to 0 and animate
+                bullet.vel = { 0.0f, 0.0f };
+                bullet.frame = 1.0f;
+            }
+
+            // If collide with hazard
+            for (Entity h : hazard->get_entities()) {
+                const Component_Hazard &hazard = c.get_component<Component_Hazard>(h);
+                
+                if (!hazard.destroyable)
+                    continue;
+
+                const Component_Transform &hazard_transform = c.get_component<Component_Transform>(h);
+                const Component_Collision &hazard_collision = c.get_component<Component_Collision>(h);
+
+                Rectangle hazard_rect{ hazard_transform.position.x + hazard_collision.bounds.x, hazard_transform.position.y + hazard_collision.bounds.y, hazard_collision.bounds.width, hazard_collision.bounds.height };
+
+                if (check_collision(world_collision, hazard_rect)) {
+                    num_bullets--;
+                    bullet.frame = -1.0f;
+
+                    break;
+                }
+            }
+
+            if (bullet.frame == -1.0f)
+                continue;
+
+            // Move
+            bullet.pos.x += bullet.vel.x * dt;
+            bullet.pos.y += bullet.vel.y * dt;
+
+            if (bullet.frame >= 6.0f) {
+                // Destroy
+                num_bullets--;
+                bullet.frame = -1.0f;
+            }
+            else if (bullet.frame >= 1.0f)
+                bullet.frame += dt;
+        }
+            
         // Enable particles on jump
         auto &particles = c.get_component<Component_Particles>(e);
 
-        particles.enabled = !agent.on_ground || abs(dynamics.velocity.x) > 0.01f;
+        particles.enabled = movement_y > 0.0f;
     }
 
     return std::make_pair(alive, achieved_goal);
@@ -209,42 +255,51 @@ void System_Agent::render() {
         auto const &transform = c.get_component<Component_Transform>(e);
         auto const &dynamics = c.get_component<Component_Dynamics>(e);
 
-        // Select the correct texture
-        Asset_Texture* texture;
+        {
+            const float size = 1.0f;
 
-        // Additional offsets needed since texture sizes different between animation frames
-        float agent_scale = 1.0f;
-        Vector2 agent_offset{ 0.0f, 0.0f };
+            SDL_FRect dst_rect{ transform.position.x, transform.position.y, unit_to_pixels * size, unit_to_pixels * size };
 
-        if (std::abs(dynamics.velocity.x) < 0.01f && agent.on_ground) {
-            texture = &stand_texture;
-            agent_scale = 0.5f;
-            agent_offset = { 0.0f, 0.2f };
-        }
-        else if (!agent.on_ground) {
-            texture = &jump_texture;
-            agent_scale = 0.6f;
-            agent_offset = { -0.05f, 0.25f };
-        }
-        else if (agent.t > 0.5f) {
-            texture = &walk2_texture;
-            agent_scale = 0.5f;
-            agent_offset = { 0.0f, 0.2f };
-        }
-        else {
-            texture = &walk1_texture;
-            agent_scale = 0.5f;
-            agent_offset = { 0.0f, 0.2f };
+            Vector2 dir{ std::cos(transform.rotation), std::sin(transform.rotation) };
+
+            dst_rect.x -= dir.x * size * 0.5f;
+            dst_rect.y -= dir.y * size * 0.5f;
+
+            SDL_RenderCopyExF(gr.get_renderer(), gr.rendering_obs ? ship_texture.obs_texture : ship_texture.window_texture, NULL, &dst_rect, transform.rotation, NULL, SDL_FLIP_NONE);
         }
 
-        Vector2 position{ transform.position.x - 0.25f, transform.position.y - 1.0f };
+        // Render bullets
+        for (int i = 0; i < num_bullets; i++) {
+            int bullet_index = (bullets.size() + next_bullet - 1 - i) % bullets.size();
 
-        gr.render_texture(texture, (Vector2){ (position.x + agent_offset.x) * unit_to_pixels, (position.y + agent_offset.y) * unit_to_pixels }, unit_to_pixels / texture->width * agent_scale, 1.0f, !agent.face_forward);
+            Bullet &bullet = bullets[bullet_index];
+
+            if (bullet.frame == -1.0f)
+                continue;
+
+            Asset_Texture* texture;
+
+            if (bullet.frame == 0.0f)
+                texture = &bullet_texture;
+            else
+                texture = &explosion_textures[static_cast<int>(bullet.frame - 1.0f)];
+
+            const float size = 1.0f;
+
+            SDL_FRect dst_rect{ bullet.pos.x, bullet.pos.y, unit_to_pixels * size, unit_to_pixels * size };
+
+            Vector2 dir{ std::cos(bullet.rotation), std::sin(bullet.rotation) };
+
+            dst_rect.x -= dir.x * size * 0.5f;
+            dst_rect.y -= dir.y * size * 0.5f;
+
+            SDL_RenderCopyExF(gr.get_renderer(), gr.rendering_obs ? texture->obs_texture : texture->window_texture, NULL, &dst_rect, bullet.rotation, NULL, SDL_FLIP_NONE);
+        }
     }
 }
 
 void System_Particles::init() {
-    particle_texture.load("assets/misc_assets/iconCircle_white.png");
+    particle_texture.load("assets/misc_assets/towerDefense_tile295.png");
 }
 
 void System_Particles::update(float dt) {

@@ -33,22 +33,18 @@ struct Component_Sprite {
     Asset_Texture* texture = nullptr;
 };
 
+struct Component_Mob_AI {
+};
+
 // Reset-triggering
-struct Component_Hazard {};
+struct Component_Hazard {
+    bool destroyable = false;
+};
+
 struct Component_Goal {};
 
 struct Component_Agent {
     int action = 0;
-    bool on_ground = false;
-
-    bool face_forward = true;
-
-    // Agent-specific animation
-    float rate = 0.1f;
-    float t = 0.0f;
-
-    float jump_timer = 0.0f;
-    int jumps_left = 2;
 };
 
 struct Particle {
