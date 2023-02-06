@@ -52,10 +52,8 @@ int curr_step = 0;
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
-//std::shared_ptr<System_Hazard> hazard;
 std::shared_ptr<System_Goal> goal;
 std::shared_ptr<System_Agent> agent;
-std::shared_ptr<System_Particles> particles;
 
 System_Tilemap::Config tilemap_config;
 int current_map_theme = 0;
@@ -219,13 +217,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     tilemap->init();
 
-    // Hazard system setup
-    // hazard = c.register_system<System_Hazard>();
-    // Signature hazard_signature;
-    // hazard_signature.set(c.get_component_type<Component_Hazard>()); // Operate only on hazards
-    // c.set_system_signature<System_Hazard>(hazard_signature);
-
-    // Goal system setup
+// Goal system setup
     goal = c.register_system<System_Goal>();
     Signature goal_signature;
     goal_signature.set(c.get_component_type<Component_Goal>()); // Operate only on goals
@@ -239,15 +231,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     agent->init();
 
-    // Particle system setup
-    // particles = c.register_system<System_Particles>();
-    // Signature particles_signature;
-    // particles_signature.set(c.get_component_type<Component_Particles>()); // Operate only on particles
-    // c.set_system_signature<System_Particles>(particles_signature);
-
-    // particles->init();
-
-    // Load backgrounds
+// Load backgrounds
     background_textures.resize(background_names.size());
 
     for (int i = 0; i < background_names.size(); i++)
@@ -311,7 +295,6 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     for (int ss = 0; ss < sub_steps; ss++) {
         // Update systems
         bool reached_goal = agent->update(dt, goal, action);
-        //particles->update(dt);
         sprite_render->update(dt);
 
         step_data.reward.f = reached_goal * 10.0f;
@@ -413,8 +396,6 @@ void render_game(bool is_obs) {
 
     game_zoom = static_cast<float>(width) / (unit_to_pixels * static_cast<float>(tilemap->get_width()));
 
-    // gr.camera_scale = game_zoom * static_cast<float>(width) / static_cast<float>(obs_width);
-    // gr.camera_scale = pixels_to_unit * tilemap->get_width() / static_cast<float>(width);
     gr.camera_scale = game_zoom;
     gr.camera_size = (Vector2){ static_cast<float>(width), static_cast<float>(height) };
 
@@ -424,12 +405,10 @@ void render_game(bool is_obs) {
     float background_aspect = static_cast<float>(background->width) / static_cast<float>(background->height);
     float extra_width = background_aspect - 1.0f; // 1 for game world aspect, which is 64x64 tiles
     
-    // gr.render_texture(background, Vector2{ -current_background_offset_x * extra_width - 0.5f*width, 0.0f - 0.5f*height }, 64.0f * unit_to_pixels / background->height);
     gr.render_texture(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 64.0f * unit_to_pixels / background->height);
 
     sprite_render->render(negative_z);
     tilemap->render();
-    // particles->render();
     sprite_render->render(positive_z);
     agent->render();
 }

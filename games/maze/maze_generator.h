@@ -18,6 +18,9 @@ const int WALL_CELL = 1;
 const int START_CELL = 10;
 
 class Maze_Generator {
+private:
+    int find_id_of_set(int);
+
 public:
     int maze_width = 0;
     int maze_height = 0;
@@ -29,7 +32,7 @@ public:
 
     // Sets
     int num_free_cells;
-    std::vector<std::unordered_set<int>> cell_sets;
+    std::vector<int> cell_sets_ranks;
     std::vector<int> cell_sets_indices;
     std::unordered_set<int> free_cell_set;
     std::vector<int> free_cells;
