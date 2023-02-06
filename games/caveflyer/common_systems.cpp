@@ -60,9 +60,10 @@ void System_Agent::init() {
     bullets.resize(32);
 }
 
-std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action) {
+std::tuple<bool, bool, int> System_Agent::update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action) {
     bool alive = true;
     bool achieved_goal = false;
+    int targets_destroyed = 0;
 
     const float accel = 0.05f;
     const float spin_rate = 0.05f;
@@ -229,6 +230,8 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
                         // Destroy the hazard
                         to_destroy.push_back(h);
 
+                        targets_destroyed++;
+
                         break;
                     }
                 }
@@ -256,7 +259,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
         particles.enabled = movement_y > 0.0f;
     }
 
-    return std::make_pair(alive, achieved_goal);
+    return std::make_tuple(alive, achieved_goal, targets_destroyed);
 }
 
 void System_Agent::render() {

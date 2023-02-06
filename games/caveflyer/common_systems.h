@@ -74,8 +74,8 @@ private:
 public:
     void init(); // Needs to load sprites
 
-    // Returns alive status (false if touched hazard), and whether touched a goal (carrot)
-    std::pair<bool, bool> update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
+    // Returns alive status (false if touched hazard), and whether touched a goal (carrot), and number of hazards destroyed
+    std::tuple<bool, bool, int> update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
     void render();
 
     void reset() {

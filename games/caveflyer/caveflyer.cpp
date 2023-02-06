@@ -309,13 +309,18 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Sub-steps
     for (int ss = 0; ss < sub_steps; ss++) {
         // Update systems
-        std::pair<bool, bool> result = agent->update(dt, hazard, goal, action);
+        bool isAlive;
+        bool achieved_goal;
+        int targets_destroyed;
+
+        std::tie(isAlive, achieved_goal, targets_destroyed) = agent->update(dt, hazard, goal, action);
+
         particles->update(dt);
         sprite_render->update(dt);
 
-        step_data.reward.f = result.second * 10.0f;
+        step_data.reward.f = achieved_goal * 10.0f + targets_destroyed * 3.0f;
 
-        step_data.terminated = !result.first || result.second;
+        step_data.terminated = !isAlive || achieved_goal;
         step_data.truncated = false;
 
         if (step_data.terminated)
