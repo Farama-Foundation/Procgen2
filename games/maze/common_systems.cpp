@@ -117,8 +117,10 @@ bool System_Agent::update(float dt, const std::shared_ptr<System_Goal> &goal, in
         }
 
         // Camera follows the agent
-        // gr.camera_position.x = transform.position.x * unit_to_pixels;
-        // gr.camera_position.y = (transform.position.y - 0.5f) * unit_to_pixels;
+        if (tilemap->center_agent()) {
+            gr.camera_position.x = transform.position.x * unit_to_pixels;
+            gr.camera_position.y = transform.position.y * unit_to_pixels;
+        }
 
         // Animation cycle
         // agent.t += agent.rate * dt;

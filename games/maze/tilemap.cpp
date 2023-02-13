@@ -2,9 +2,6 @@
 
 #include "maze_generator.h"
 #include <random>
-//tmp include
-#include <chrono>
-#include <iostream>
 
 const int GOAL = 2;
 
@@ -31,23 +28,31 @@ void System_Tilemap::set_area_with_top(int x, int y, int width, int height, Tile
 }
 
 // Main map generation
-int num_mazegens = 0;
-double total_gentime = 0;
 void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     int world_dim;
+    int visibility;
 
-    if (cfg.mode == hard_mode)
+    if (cfg.mode == hard_mode) {
         world_dim = 25;
-    else if (cfg.mode == memory_mode)
+        visibility = 25;
+        agent_centered = false;
+    } else if (cfg.mode == memory_mode) {
         world_dim = 31;
-    else
+        visibility = 8;
+        agent_centered = true;
+    } else {
         world_dim = 15;
+        visibility = 15;
+        agent_centered = false;
+    }
 
     const int main_width = world_dim;
     const int main_height = world_dim;
 
     this->map_width = main_width;
     this->map_height = main_height;
+    this->visible_width = visibility;
+    this->visible_height = visibility;
 
     tile_ids.resize(map_width * map_height);
 

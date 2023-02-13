@@ -394,7 +394,7 @@ void render_game(bool is_obs) {
     int width = is_obs ? obs_width : window_width;
     int height = is_obs ? obs_height : window_height;
 
-    game_zoom = static_cast<float>(width) / (unit_to_pixels * static_cast<float>(tilemap->get_width()));
+    game_zoom = static_cast<float>(width) / (unit_to_pixels * static_cast<float>(tilemap->get_visible_width()));
 
     gr.camera_scale = game_zoom;
     gr.camera_size = (Vector2){ static_cast<float>(width), static_cast<float>(height) };

@@ -41,8 +41,11 @@ public:
         Distribution_Mode mode = hard_mode;
     };
 
+
 private:
     int map_width, map_height;
+    int visible_width, visible_height;
+    bool agent_centered = false;
 
     std::vector<Asset_Texture> id_to_textures;
 
@@ -94,5 +97,17 @@ public:
 
     int get_height() const {
         return map_height;
+    }
+
+    int get_visible_width() const {
+        return visible_width;
+    }
+
+    int get_visible_height() const {
+        return visible_height;
+    }
+
+    bool center_agent() const {
+        return agent_centered;
     }
 };
