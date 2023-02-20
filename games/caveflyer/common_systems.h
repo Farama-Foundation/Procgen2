@@ -40,6 +40,11 @@ public:
     }
 };
 
+class System_Mob_AI : public System {
+public:
+    void update(float dt);
+};
+
 // -------------------- Goals --------------------
 
 // Empty mostly, since just need it to collect goals for agent system

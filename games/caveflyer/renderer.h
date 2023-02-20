@@ -19,7 +19,7 @@ public:
     Vector2 camera_size{ 64, 64 };
     float camera_scale = 1.0f;
 
-    void render_texture(Asset_Texture* texture, const Vector2 &position, float scale = 1.0f, float alpha = 1.0f, bool flip_horizontal = false);
+    void render_texture(Asset_Texture* texture, const Vector2 &position, float scale = 1.0f, float alpha = 1.0f, bool flip_horizontal = false, bool flip_vertical = false);
     void render_texture_rotated(Asset_Texture* texture, const Vector2 &position, float rotation, float scale = 1.0f, float alpha = 1.0f);
 
     SDL_Renderer* get_renderer() const {

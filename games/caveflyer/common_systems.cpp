@@ -47,6 +47,33 @@ void System_Sprite_Render::render(Sprite_Render_Mode mode) {
     }
 }
 
+void System_Mob_AI::update(float dt) {
+    // Get tile map system
+    std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
+
+    for (auto const &e : entities) {
+        auto &transform = c.get_component<Component_Transform>(e);
+        auto &dynamics = c.get_component<Component_Dynamics>(e);
+        auto &collision = c.get_component<Component_Collision>(e);
+    
+        transform.position.x += dynamics.velocity.x * dt;
+        transform.position.y += dynamics.velocity.y * dt;
+
+        // World space collision
+        Rectangle world_collision{ transform.position.x + collision.bounds.x, transform.position.y + collision.bounds.y, collision.bounds.width, collision.bounds.height };
+
+        // If colliding with map
+        std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
+            return (id == wall ? full : none);
+        });
+
+        if (collision_data.second) {
+            // Reverse direction
+            dynamics.velocity = { -dynamics.velocity.x, -dynamics.velocity.y };
+        }
+    }
+}
+
 void System_Agent::init() {
     ship_texture.load("assets/misc_assets/playerShip1_red.png");
     bullet_texture.load("assets/misc_assets/laserBlue02.png");
@@ -214,9 +241,6 @@ std::tuple<bool, bool, int> System_Agent::update(float dt, const std::shared_ptr
                 for (Entity h : hazard->get_entities()) {
                     const Component_Hazard &hazard = c.get_component<Component_Hazard>(h);
                     
-                    if (!hazard.destroyable)
-                        continue;
-
                     const Component_Transform &hazard_transform = c.get_component<Component_Transform>(h);
                     const Component_Collision &hazard_collision = c.get_component<Component_Collision>(h);
 
@@ -227,10 +251,12 @@ std::tuple<bool, bool, int> System_Agent::update(float dt, const std::shared_ptr
                         bullet.vel = { 0.0f, 0.0f };
                         bullet.frame = 1.0f;
 
-                        // Destroy the hazard
-                        to_destroy.push_back(h);
+                        if (hazard.destroyable) {
+                            // Destroy the hazard
+                            to_destroy.push_back(h);
 
-                        targets_destroyed++;
+                            targets_destroyed++;
+                        }
 
                         break;
                     }

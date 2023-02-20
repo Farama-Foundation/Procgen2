@@ -48,6 +48,7 @@ float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it t
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
 std::shared_ptr<System_Hazard> hazard;
+std::shared_ptr<System_Mob_AI> mob_ai;
 std::shared_ptr<System_Goal> goal;
 std::shared_ptr<System_Agent> agent;
 std::shared_ptr<System_Particles> particles;
@@ -224,6 +225,12 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     hazard_signature.set(c.get_component_type<Component_Hazard>()); // Operate only on hazards
     c.set_system_signature<System_Hazard>(hazard_signature);
 
+    // Mob AI system setup
+    mob_ai = c.register_system<System_Mob_AI>();
+    Signature mob_ai_signature;
+    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mob ai
+    c.set_system_signature<System_Mob_AI>(mob_ai_signature);
+
     // Goal system setup
     goal = c.register_system<System_Goal>();
     Signature goal_signature;
@@ -314,6 +321,8 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
         int targets_destroyed;
 
         std::tie(isAlive, achieved_goal, targets_destroyed) = agent->update(dt, hazard, goal, action);
+
+        mob_ai->update(dt);
 
         particles->update(dt);
         sprite_render->update(dt);
