@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(Chaser)
+project(BossFight)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
@@ -31,19 +31,17 @@ include_directories("${PROJECT_SOURCE_DIR}")
 
 set(SOURCE_PATH "${PROJECT_SOURCE_DIR}")
 set(SOURCES
-    "${SOURCE_PATH}/chaser.cpp"
+    "${SOURCE_PATH}/bossfight.cpp"
     "${SOURCE_PATH}/ecs.cpp"
     "${SOURCE_PATH}/helpers.cpp"
     "${SOURCE_PATH}/renderer.cpp"
     "${SOURCE_PATH}/common_assets.cpp"
     "${SOURCE_PATH}/common_systems.cpp"
-    "${SOURCE_PATH}/maze_generator.cpp"
-    "${SOURCE_PATH}/tilemap.cpp"
 )
 
-add_library(Chaser SHARED ${SOURCES})
+add_library(BossFight SHARED ${SOURCES})
 
-target_link_libraries(Chaser SDL2::Main SDL2::Image)
+target_link_libraries(BossFight SDL2::Main SDL2::Image)
 
-set_target_properties(Chaser PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+set_target_properties(BossFight PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
