@@ -2,8 +2,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <random>
 
-#include "tilemap.h"
 #include "common_systems.h"
 
 const int version = 100;
@@ -46,14 +46,11 @@ float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it t
 
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
-std::shared_ptr<System_Tilemap> tilemap;
 std::shared_ptr<System_Hazard> hazard;
 std::shared_ptr<System_Mob_AI> mob_ai;
 std::shared_ptr<System_Goal> goal;
 std::shared_ptr<System_Agent> agent;
 std::shared_ptr<System_Particles> particles;
-
-System_Tilemap::Config tilemap_config;
 
 // Big list of different background images
 std::vector<std::string> background_names {
