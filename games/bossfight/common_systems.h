@@ -42,16 +42,32 @@ public:
 
 class System_Mob_AI : public System {
 public:
-    void update(float dt);
-};
+    struct Bullet {
+        Vector2 pos;
+        Vector2 vel;
+        float rotation;
+        float frame = -1.0f; // Animation frame, -1.0f is "dead" flag
+    };
 
-// -------------------- Goals --------------------
+private:
+    Asset_Texture ship_texture;
+    Asset_Texture bullet_texture;
+    std::vector<Bullet> bullets;
+    std::vector<Asset_Texture> explosion_textures;
+    int next_bullet = 0;
+    int num_bullets = 0;
+    float bullet_timer = 0.0f;
 
-// Empty mostly, since just need it to collect goals for agent system
-class System_Goal : public System {
 public:
-    std::unordered_set<Entity> &get_entities() {
-        return entities;
+    void init(); // Needs to load sprites
+
+    void update(float dt);
+    void render();
+
+    void reset() {
+        next_bullet = 0;
+        num_bullets = 0;
+        bullet_timer = 0.0f;
     }
 };
 
@@ -67,7 +83,6 @@ public:
     };
 
 private:
-    // Agent textures
     Asset_Texture ship_texture;
     Asset_Texture bullet_texture;
     std::vector<Bullet> bullets;
@@ -80,7 +95,7 @@ public:
     void init(); // Needs to load sprites
 
     // Returns alive status (false if touched hazard), and whether touched a goal (carrot), and number of hazards destroyed
-    std::tuple<bool, bool, int> update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
+    bool update(float dt, const std::shared_ptr<System_Hazard> &hazard, int action);
     void render();
 
     void reset() {
@@ -88,17 +103,4 @@ public:
         num_bullets = 0;
         bullet_timer = 0.0f;
     }
-};
-
-// ------------------- Particles ------------------
-
-class System_Particles : public System {
-private:
-    Asset_Texture particle_texture;
-
-public:
-    void init(); // Loads sprites
-    
-    void update(float dt);
-    void render();
 };

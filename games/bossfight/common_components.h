@@ -34,6 +34,7 @@ struct Component_Sprite {
 };
 
 struct Component_Mob_AI {
+    
 };
 
 // Reset-triggering
@@ -41,25 +42,6 @@ struct Component_Hazard {
     bool destroyable = false;
 };
 
-struct Component_Goal {};
-
 struct Component_Agent {
     int action = 0;
-};
-
-struct Particle {
-    Vector2 position;
-    Vector2 dir;
-    float rotation;
-    float life = 0.0f;
-};
-
-struct Component_Particles {
-    std::vector<Particle> particles;
-
-    Vector2 offset{ 0.0f, 0.0f };
-    float lifespan = 3.0f;
-    float spawn_timer = 0.0f;
-    float spawn_time = 0.3f;
-    bool enabled = true;
 };

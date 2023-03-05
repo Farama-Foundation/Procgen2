@@ -69,9 +69,15 @@ void Renderer::render_texture(Asset_Texture* texture, const Vector2 &position, f
     dst_rect.x -= offset.x * (dst_rect.w / src_rect.w);
     dst_rect.y -= offset.y * (dst_rect.h / src_rect.h);
 
+    SDL_RendererFlip flip = SDL_FLIP_NONE;
+
     if (flip_horizontal)
         // Flip src_rect
         src_recti.x = texture->width - src_recti.w - src_recti.x;
+
+    if (flip_vertical)
+        // Flip src_rect
+        src_recti.y = texture->height - src_recti.h - src_recti.y;
 
     SDL_RenderCopyExF(renderer, rendering_obs ? texture->obs_texture : texture->window_texture, &src_recti, &dst_rect, 0.0f, NULL, flip_horizontal ? SDL_FLIP_HORIZONTAL : (flip_vertical ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE));
 

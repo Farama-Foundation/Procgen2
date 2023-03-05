@@ -29,7 +29,7 @@ const int num_actions = 15;
 int window_width = 512;
 int window_height = 512;
 
-float game_zoom = 0.5f; // Base game zoom level
+float game_zoom = 1.0f; // Base game zoom level
 
 std::mt19937 rng;
 
@@ -48,9 +48,7 @@ float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it t
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Hazard> hazard;
 std::shared_ptr<System_Mob_AI> mob_ai;
-std::shared_ptr<System_Goal> goal;
 std::shared_ptr<System_Agent> agent;
-std::shared_ptr<System_Particles> particles;
 
 // Big list of different background images
 std::vector<std::string> background_names {
@@ -73,6 +71,7 @@ std::vector<Asset_Texture> background_textures;
 
 int current_background_index = 0;
 float current_background_offset_x = 0.0f;
+float current_background_offset_y = 0.0f;
 
 // Forward declarations
 void render_game(bool is_obs);
@@ -199,22 +198,13 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Sprite>();
     c.register_component<Component_Mob_AI>();
     c.register_component<Component_Hazard>();
-    c.register_component<Component_Goal>();
     c.register_component<Component_Agent>(); // Player
-    c.register_component<Component_Particles>();
 
     // Sprite rendering system
     sprite_render = c.register_system<System_Sprite_Render>();
     Signature sprite_render_signature;
     sprite_render_signature.set(c.get_component_type<Component_Sprite>()); // Operate only on sprites
     c.set_system_signature<System_Sprite_Render>(sprite_render_signature);
-
-    // Tile map setup
-    tilemap = c.register_system<System_Tilemap>();
-    Signature tilemap_signature{ 0 }; // Operates on nothing
-    c.set_system_signature<System_Tilemap>(tilemap_signature);
-
-    tilemap->init();
 
     // Hazard system setup
     hazard = c.register_system<System_Hazard>();
@@ -228,11 +218,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mob ai
     c.set_system_signature<System_Mob_AI>(mob_ai_signature);
 
-    // Goal system setup
-    goal = c.register_system<System_Goal>();
-    Signature goal_signature;
-    goal_signature.set(c.get_component_type<Component_Goal>()); // Operate only on goals
-    c.set_system_signature<System_Goal>(goal_signature);
+    mob_ai->init();
 
     // Agent system setup
     agent = c.register_system<System_Agent>();
@@ -241,14 +227,6 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.set_system_signature<System_Agent>(agent_signature);
 
     agent->init();
-
-    // Particle system setup
-    particles = c.register_system<System_Particles>();
-    Signature particles_signature;
-    particles_signature.set(c.get_component_type<Component_Particles>()); // Operate only on particles
-    c.set_system_signature<System_Particles>(particles_signature);
-
-    particles->init();
 
     // Load backgrounds
     background_textures.resize(background_names.size());
@@ -313,20 +291,15 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Sub-steps
     for (int ss = 0; ss < sub_steps; ss++) {
         // Update systems
-        bool isAlive;
-        bool achieved_goal;
-        int targets_destroyed;
-
-        std::tie(isAlive, achieved_goal, targets_destroyed) = agent->update(dt, hazard, goal, action);
+        bool isAlive = agent->update(dt, hazard, action);
 
         mob_ai->update(dt);
 
-        particles->update(dt);
         sprite_render->update(dt);
 
-        step_data.reward.f = achieved_goal * 10.0f + targets_destroyed * 3.0f;
+        step_data.reward.f = (!isAlive) * -10.0f;
 
-        step_data.terminated = !isAlive || achieved_goal;
+        step_data.terminated = !isAlive;
         step_data.truncated = false;
 
         if (step_data.terminated)
@@ -424,14 +397,10 @@ void render_game(bool is_obs) {
     // Draw background image
     Asset_Texture* background = &background_textures[current_background_index];
 
-    float background_aspect = static_cast<float>(background->width) / static_cast<float>(background->height);
-    float extra_width = background_aspect - 1.0f; // 1 for game world aspect, which is 64x64 tiles
-    
-    gr.render_texture(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 64.0f * unit_to_pixels / background->height);
+    gr.render_texture(background, Vector2{ -gr.camera_size.x / gr.camera_scale * 0.5f, -gr.camera_size.y / gr.camera_scale * 0.5f }, 1.0f / background->height * gr.camera_size.y / gr.camera_scale);
 
     sprite_render->render(negative_z);
-    tilemap->render(0);
-    particles->render();
+    mob_ai->render();
     sprite_render->render(positive_z);
     agent->render();
 }
@@ -439,7 +408,23 @@ void render_game(bool is_obs) {
 void reset() {
     c.clear_entities();
 
-    tilemap->regenerate(rng, tilemap_config);
+    std::uniform_real_distribution<float> spawn_dist(-1.0f, 1.0f);
+
+    // Spawn the player (agent)
+    Entity player = c.create_entity();
+
+    c.add_component(player, Component_Transform{ .position = { spawn_dist(rng) * gr.camera_size.x / gr.camera_scale * pixels_to_unit * 0.5f, gr.camera_size.y / gr.camera_scale * pixels_to_unit * 0.5f } });
+    c.add_component(player, Component_Collision{ .bounds{ -0.15f, -0.1f, 0.3f, 0.2f } });
+    c.add_component(player, Component_Dynamics{});
+    c.add_component(player, Component_Agent{});
+    
+    // Spawn the boss (mob_ai)
+    Entity boss = c.create_entity();
+
+    c.add_component(boss, Component_Transform{ .position = { 0.0f, 0.0f } });
+    c.add_component(boss, Component_Collision{ .bounds{ -0.15f, -0.1f, 0.3f, 0.2f } });
+    c.add_component(boss, Component_Dynamics{});
+    c.add_component(boss, Component_Mob_AI{});
 
     // Determine background (themeing)
     std::uniform_int_distribution<int> background_dist(0, background_textures.size() - 1);
@@ -449,9 +434,12 @@ void reset() {
     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
     current_background_offset_x = dist01(rng);
+    current_background_offset_y = dist01(rng);
 
     // Clear before next render to remove now destroyed entities from previous episode
     sprite_render->clear_render();
 
     agent->reset();
+
+    mob_ai->reset();
 }

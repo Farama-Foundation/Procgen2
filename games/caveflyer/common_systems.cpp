@@ -296,12 +296,6 @@ void System_Agent::render() {
         auto const &transform = c.get_component<Component_Transform>(e);
         auto const &dynamics = c.get_component<Component_Dynamics>(e);
 
-        {
-            const float size = 0.15f;
-
-            gr.render_texture_rotated(&ship_texture, { transform.position.x * unit_to_pixels - size * ship_texture.width * 0.5f, transform.position.y * unit_to_pixels - size * ship_texture.height * 0.5f }, transform.rotation + M_PI * 0.5f, size);
-        }
-
         // Render bullets
         for (int i = 0; i < num_bullets; i++) {
             int bullet_index = (bullets.size() + next_bullet - 1 - i) % bullets.size();
@@ -321,6 +315,13 @@ void System_Agent::render() {
             const float size = 0.1f;
 
             gr.render_texture_rotated(texture, { bullet.pos.x * unit_to_pixels - size * texture->width * 0.5f, bullet.pos.y * unit_to_pixels - size * texture->height * 0.5f }, bullet.rotation + M_PI * 0.5f, size);
+        }
+
+        // Render ship
+        {
+            const float size = 0.15f;
+
+            gr.render_texture_rotated(&ship_texture, { transform.position.x * unit_to_pixels - size * ship_texture.width * 0.5f, transform.position.y * unit_to_pixels - size * ship_texture.height * 0.5f }, transform.rotation + M_PI * 0.5f, size);
         }
     }
 }
