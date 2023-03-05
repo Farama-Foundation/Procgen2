@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <random>
 
 // -------------------- Sprites ---------------------
 //
@@ -50,13 +51,16 @@ public:
     };
 
 private:
-    Asset_Texture ship_texture;
-    Asset_Texture bullet_texture;
+    std::vector<Asset_Texture> ship_textures;
+    std::vector<Asset_Texture*> bullet_textures;
     std::vector<Bullet> bullets;
-    std::vector<Asset_Texture> explosion_textures;
+    std::vector<Asset_Texture*> explosion_textures;
     int next_bullet = 0;
     int num_bullets = 0;
     float bullet_timer = 0.0f;
+
+    int current_ship_texture_index;
+    int current_bullet_texture_index;
 
 public:
     void init(); // Needs to load sprites
@@ -64,11 +68,7 @@ public:
     void update(float dt);
     void render();
 
-    void reset() {
-        next_bullet = 0;
-        num_bullets = 0;
-        bullet_timer = 0.0f;
-    }
+    void reset(std::mt19937 &rng);
 };
 
 // --------------------- Player --------------------
@@ -83,13 +83,16 @@ public:
     };
 
 private:
-    Asset_Texture ship_texture;
-    Asset_Texture bullet_texture;
+    std::vector<Asset_Texture> ship_textures;
+    std::vector<Asset_Texture*> bullet_textures;
     std::vector<Bullet> bullets;
-    std::vector<Asset_Texture> explosion_textures;
+    std::vector<Asset_Texture*> explosion_textures;
     int next_bullet = 0;
     int num_bullets = 0;
     float bullet_timer = 0.0f;
+
+    int current_ship_texture_index;
+    int current_bullet_texture_index;
 
 public:
     void init(); // Needs to load sprites
@@ -98,9 +101,5 @@ public:
     bool update(float dt, const std::shared_ptr<System_Hazard> &hazard, int action);
     void render();
 
-    void reset() {
-        next_bullet = 0;
-        num_bullets = 0;
-        bullet_timer = 0.0f;
-    }
+    void reset(std::mt19937 &rng);
 };

@@ -46,13 +46,23 @@ void System_Sprite_Render::render(Sprite_Render_Mode mode) {
 }
 
 void System_Mob_AI::init() {
-    ship_texture.load("assets/misc_assets/playerShip1_red.png");
-    bullet_texture.load("assets/misc_assets/laserBlue02.png");
+    ship_textures.resize(4);
+
+    ship_textures[0].load("assets/misc_assets/enemyShipBlack1.png");
+    ship_textures[1].load("assets/misc_assets/enemyShipBlue2.png");
+    ship_textures[2].load("assets/misc_assets/enemyShipGreen3.png");
+    ship_textures[3].load("assets/misc_assets/enemyShipRed4.png");
+
+    bullet_textures.resize(3);
+
+    bullet_textures[0] = &manager_texture.get("assets/misc_assets/laserGreen14.png");
+    bullet_textures[1] = &manager_texture.get("assets/misc_assets/laserRed11.png");
+    bullet_textures[2] = &manager_texture.get("assets/misc_assets/laserBlue09.png");
 
     explosion_textures.resize(5);
 
     for (int i = 0; i < explosion_textures.size(); i++)
-        explosion_textures[i] = manager_texture.get("assets/misc_assets/explosion" + std::to_string(i + 1) + ".png");
+        explosion_textures[i] = &manager_texture.get("assets/misc_assets/explosion" + std::to_string(i + 1) + ".png");
 
     // Max bullets
     bullets.resize(64);
@@ -85,12 +95,6 @@ void System_Mob_AI::render() {
         auto const &transform = c.get_component<Component_Transform>(e);
         auto const &dynamics = c.get_component<Component_Dynamics>(e);
 
-        {
-            const float size = 0.1f;
-
-            gr.render_texture(&ship_texture, { transform.position.x * unit_to_pixels - size * ship_texture.width * 0.5f, transform.position.y * unit_to_pixels - size * ship_texture.height * 0.5f }, size);
-        }
-
         // Render bullets
         for (int i = 0; i < num_bullets; i++) {
             int bullet_index = (bullets.size() + next_bullet - 1 - i) % bullets.size();
@@ -103,25 +107,55 @@ void System_Mob_AI::render() {
             Asset_Texture* texture;
 
             if (bullet.frame == 0.0f)
-                texture = &bullet_texture;
+                texture = bullet_textures[current_bullet_texture_index];
             else
-                texture = &explosion_textures[static_cast<int>(bullet.frame - 1.0f)];
+                texture = explosion_textures[static_cast<int>(bullet.frame - 1.0f)];
 
             const float size = 0.1f;
 
             gr.render_texture_rotated(texture, { bullet.pos.x * unit_to_pixels - size * texture->width * 0.5f, bullet.pos.y * unit_to_pixels - size * texture->height * 0.5f }, bullet.rotation + M_PI * 0.5f, size);
         }
+
+        {
+            const float size = 0.5f;
+
+            gr.render_texture(&ship_textures[current_ship_texture_index], { transform.position.x * unit_to_pixels - size * ship_textures[current_ship_texture_index].width * 0.5f, transform.position.y * unit_to_pixels - size * ship_textures[current_ship_texture_index].height * 0.5f }, size);
+        }
     }
 }
 
+void System_Mob_AI::reset(std::mt19937 &rng) {
+    next_bullet = 0;
+    num_bullets = 0;
+    bullet_timer = 0.0f;
+
+    std::uniform_int_distribution<int> ship_texture_dist(0, ship_textures.size() - 1);
+
+    current_ship_texture_index = ship_texture_dist(rng);
+
+    std::uniform_int_distribution<int> bullet_texture_dist(0, bullet_textures.size() - 1);
+
+    current_bullet_texture_index = bullet_texture_dist(rng);
+}
+
 void System_Agent::init() {
-    ship_texture.load("assets/misc_assets/playerShip1_red.png");
-    bullet_texture.load("assets/misc_assets/laserBlue02.png");
+    ship_textures.resize(4);
+
+    ship_textures[0].load("assets/misc_assets/playerShip1_blue.png");
+    ship_textures[1].load("assets/misc_assets/playerShip1_green.png");
+    ship_textures[2].load("assets/misc_assets/playerShip2_orange.png");
+    ship_textures[3].load("assets/misc_assets/playerShip3_red.png");
+
+    bullet_textures.resize(3);
+
+    bullet_textures[0] = &manager_texture.get("assets/misc_assets/laserGreen14.png");
+    bullet_textures[1] = &manager_texture.get("assets/misc_assets/laserRed11.png");
+    bullet_textures[2] = &manager_texture.get("assets/misc_assets/laserBlue09.png");
 
     explosion_textures.resize(5);
 
     for (int i = 0; i < explosion_textures.size(); i++)
-        explosion_textures[i] = manager_texture.get("assets/misc_assets/explosion" + std::to_string(i + 1) + ".png");
+        explosion_textures[i] = &manager_texture.get("assets/misc_assets/explosion" + std::to_string(i + 1) + ".png");
 
     // Max bullets
     bullets.resize(32);
@@ -300,9 +334,9 @@ void System_Agent::render() {
             Asset_Texture* texture;
 
             if (bullet.frame == 0.0f)
-                texture = &bullet_texture;
+                texture = bullet_textures[current_bullet_texture_index];
             else
-                texture = &explosion_textures[static_cast<int>(bullet.frame - 1.0f)];
+                texture = explosion_textures[static_cast<int>(bullet.frame - 1.0f)];
 
             const float size = 0.05f;
 
@@ -313,7 +347,21 @@ void System_Agent::render() {
         {
             const float size = 0.05f;
 
-            gr.render_texture(&ship_texture, { transform.position.x * unit_to_pixels - size * ship_texture.width * 0.5f, transform.position.y * unit_to_pixels - size * ship_texture.height * 0.5f }, size);
+            gr.render_texture(&ship_textures[current_ship_texture_index], { transform.position.x * unit_to_pixels - size * ship_textures[current_ship_texture_index].width * 0.5f, transform.position.y * unit_to_pixels - size * ship_textures[current_ship_texture_index].height * 0.5f }, size);
         }
     }
+}
+
+void System_Agent::reset(std::mt19937 &rng) {
+    next_bullet = 0;
+    num_bullets = 0;
+    bullet_timer = 0.0f;
+
+    std::uniform_int_distribution<int> ship_texture_dist(0, ship_textures.size() - 1);
+
+    current_ship_texture_index = ship_texture_dist(rng);
+
+    std::uniform_int_distribution<int> bullet_texture_dist(0, bullet_textures.size() - 1);
+
+    current_bullet_texture_index = bullet_texture_dist(rng);
 }

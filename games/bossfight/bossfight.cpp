@@ -439,7 +439,7 @@ void reset() {
     // Clear before next render to remove now destroyed entities from previous episode
     sprite_render->clear_render();
 
-    agent->reset();
+    agent->reset(rng);
 
-    mob_ai->reset();
+    mob_ai->reset(rng);
 }
