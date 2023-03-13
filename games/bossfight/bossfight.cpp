@@ -67,7 +67,19 @@ std::vector<std::string> background_names {
     "assets/space_backgrounds/parallax-space-backgound.png"
 };
 
+std::vector<std::string> barrier_names = {
+    "assets/misc_assets/spaceMeteors_001.png",
+    "assets/misc_assets/spaceMeteors_002.png",
+    "assets/misc_assets/spaceMeteors_003.png",
+    "assets/misc_assets/spaceMeteors_004.png",
+    "assets/misc_assets/meteorGrey_big1.png",
+    "assets/misc_assets/meteorGrey_big2.png",
+    "assets/misc_assets/meteorGrey_big3.png",
+    "assets/misc_assets/meteorGrey_big4.png"
+};
+
 std::vector<Asset_Texture> background_textures;
+std::vector<Asset_Texture> barrier_textures;
 
 int current_background_index = 0;
 float current_background_offset_x = 0.0f;
@@ -234,6 +246,12 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     for (int i = 0; i < background_names.size(); i++)
         background_textures[i].load(background_names[i]);
 
+    // Load barriers
+    barrier_textures.resize(background_names.size());
+
+    for (int i = 0; i < barrier_names.size(); i++)
+        barrier_textures[i].load(barrier_names[i]);
+
     // Reset spawns entities while generating map
     reset();
 
@@ -291,15 +309,15 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Sub-steps
     for (int ss = 0; ss < sub_steps; ss++) {
         // Update systems
-        bool isAlive = agent->update(dt, hazard, action);
+        bool agent_alive = agent->update(dt, hazard, action, rng);
 
-        mob_ai->update(dt);
+        bool boss_alive = mob_ai->update(dt, hazard, rng);
 
         sprite_render->update(dt);
 
-        step_data.reward.f = (!isAlive) * -10.0f;
+        step_data.reward.f = (!agent_alive) * -10.0f + (!boss_alive) * 10.0f;
 
-        step_data.terminated = !isAlive;
+        step_data.terminated = !agent_alive || !boss_alive;
         step_data.truncated = false;
 
         if (step_data.terminated)
@@ -422,9 +440,50 @@ void reset() {
     Entity boss = c.create_entity();
 
     c.add_component(boss, Component_Transform{ .position = { 0.0f, 0.0f } });
-    c.add_component(boss, Component_Collision{ .bounds{ -0.15f, -0.1f, 0.3f, 0.2f } });
+    c.add_component(boss, Component_Collision{ .bounds{ -0.6f, -0.4f, 1.2f, 0.8f } });
     c.add_component(boss, Component_Dynamics{});
+    c.add_component(boss, Component_Hazard{});
     c.add_component(boss, Component_Mob_AI{});
+
+    // Spawn barriers
+    std::uniform_int_distribution<int> num_barriers_dist(1, 4);
+    std::uniform_int_distribution<int> barrier_texture_dist(0, barrier_textures.size() - 1);
+    std::uniform_real_distribution<float> barrier_pos_dist_y(0.7f, 1.2f);
+
+    int num_barriers = num_barriers_dist(rng);
+
+    std::vector<Rectangle> barrier_collisions(num_barriers);
+
+    for (int i = 0; i < num_barriers; i++) {
+        Vector2 position = { spawn_dist(rng) * gr.camera_size.x / gr.camera_scale * pixels_to_unit * 0.5f * 0.9f, gr.camera_size.y / gr.camera_scale * pixels_to_unit * 0.5f - barrier_pos_dist_y(rng) };
+        Rectangle collision = { -0.1f, -0.1f, 0.2f, 0.2f };
+
+        Rectangle world_collision = { position.x + collision.x, position.y + collision.y, collision.width, collision.height };
+
+        // Check existing barriers for collision
+        bool collided = false;
+
+        for (int j = 0; j < i; j++) {
+            if (check_collision(world_collision, barrier_collisions[j])) {
+                collided = true;
+
+                break;
+            }
+        }
+
+        if (!collided) {
+            Entity barrier = c.create_entity();
+
+            c.add_component(barrier, Component_Transform{ .position = position});
+            c.add_component(barrier, Component_Collision{ .bounds = collision });
+            c.add_component(barrier, Component_Hazard{});
+            c.add_component(barrier, Component_Sprite{ .position = Vector2{ -0.15f, -0.15f }, .scale = 0.3f, .texture = &barrier_textures[barrier_texture_dist(rng)] });
+
+            barrier_collisions[i] = world_collision;
+        }
+        else
+            barrier_collisions[i] = { 0.0f, 0.0f, 0.0f, 0.0f }; // Some collision that won't trigger
+    }
 
     // Determine background (themeing)
     std::uniform_int_distribution<int> background_dist(0, background_textures.size() - 1);

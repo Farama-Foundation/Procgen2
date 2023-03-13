@@ -26,6 +26,7 @@ struct Component_Sprite {
     float rotation = 0.0f;
     float scale = 1.0f;
     bool flip_x = false;
+    bool flip_y = false;
 
     Color tint{ 255, 255, 255, 255 };
     float z = 0.0f; // Ordering
@@ -34,7 +35,13 @@ struct Component_Sprite {
 };
 
 struct Component_Mob_AI {
-    
+    float phase_timer = 0.0f;
+    int phase_index = 0;
+    int weapon_index = 0;
+
+    float attack_timer = 0.0f;
+
+    int hp = 0;
 };
 
 // Reset-triggering
