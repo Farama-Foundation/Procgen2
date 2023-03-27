@@ -13,15 +13,14 @@
 enum Distribution_Mode {
     easy_mode,
     hard_mode,
-    memory_mode
+    extreme_mode
 };
 
 enum Tile_ID {
     out_of_bounds = -1,
     empty = 0,
-    wall_top,
-    wall_mid,
-    spike,
+    wall,
+    marker,
     num_ids
 };
 
@@ -33,35 +32,30 @@ enum Collision_Type {
 // Tile map system
 class System_Tilemap : public System {
 public:
-    struct Tilemap_Info {
-        Vector2 goal_pos = Vector2{ 0.0f, 0.0f };
-    };
-
     struct Tile {
         std::vector<Asset_Texture> textures;
     };
 
     struct Config {
-        Distribution_Mode mode = hard_mode;
+        Distribution_Mode mode = easy_mode;
     };
 
 private:
     int map_width, map_height;
 
-    std::vector<std::vector<Asset_Texture>> id_to_textures;
+    std::vector<Asset_Texture> id_to_textures;
 
     std::vector<Tile_ID> tile_ids;
 
-    Tilemap_Info info;
+    int total_points = 0;
 
-    void spawn_spike(int x, int y);
-
-    bool is_space_on_ground(int x, int y);
-    bool is_top_wall(int x, int y);
-    bool is_left_wall(int x, int y);
-    bool is_right_wall(int x, int y);
+    void spawn_orb(int tile_index);
+    void spawn_point(int tile_index);
+    void spawn_egg(int tile_index);
 
 public:
+    std::vector<int> free_cells; // Which cells have nothing in them
+
     // Initialize the tilemap
     void init();
 
@@ -83,12 +77,12 @@ public:
     // Get a tile
     Tile_ID get(int x, int y) {
         if (x < 0 || y < 0 || x >= map_width || y >= map_height)
-            return wall_mid; // Out of bounds is a wall
+            return out_of_bounds;
 
         return tile_ids[y + x * map_height];
     }
 
-    void render(int theme);
+    void render();
 
     // General collision detection, returns new rectangle position and a collision flag
     std::pair<Vector2, bool> get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func);
@@ -101,7 +95,7 @@ public:
         return map_height;
     }
 
-    const Tilemap_Info &getInfo() const {
-        return info;
+    int get_total_points() const {
+        return total_points;
     }
 };

@@ -4,7 +4,7 @@
 #include "room_generator.h"
 
 void System_Tilemap::init() {
-    id_to_textures.resize(3);
+    id_to_textures.resize(num_ids);
 
     // Load textures
     id_to_textures[wall_top].resize(4);
@@ -60,7 +60,7 @@ bool System_Tilemap::is_space_on_ground(int x, int y) {
 
     int below_id = get(x, y - 1);
 
-    return below_id == wall_mid || below_id == out_of_bounds;
+    return below_id == wall_mid || below_id == wall_top;
 }
 
 bool System_Tilemap::is_top_wall(int x, int y) {
@@ -93,7 +93,6 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     this->map_height = main_height;
 
     tile_ids.resize(map_width * map_height);
-    crate_type_indices.resize(tile_ids.size());
 
     // Clear
     std::fill(tile_ids.begin(), tile_ids.end(), empty);
@@ -194,12 +193,14 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
 
     Entity goal = c.create_entity();
 
-    Vector2 pos = { static_cast<float>(goal_x) + 0.5f, static_cast<float>(map_height - 1 - goal_y) + 0.5f };
+    Vector2 goal_pos = { static_cast<float>(goal_x) + 0.5f, static_cast<float>(map_height - 1 - goal_y) + 0.5f };
 
-    c.add_component(goal, Component_Transform{ .position{ pos } });
+    c.add_component(goal, Component_Transform{ .position{ goal_pos } });
     c.add_component(goal, Component_Sprite{ .position{ -0.5f, -0.5f }, .z = 1.0f, .texture = &manager_texture.get("assets/misc_assets/carrot.png") });
     c.add_component(goal, Component_Goal{});
     c.add_component(goal, Component_Collision{ .bounds{ -0.5f, -0.5f, 1.0f, 1.0f }});
+
+    info.goal_pos = goal_pos;
 
     float spike_prob = cfg.mode == memory_mode ? 0.0f : 0.2f;
 
@@ -213,7 +214,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
 
     std::uniform_int_distribution<int> dist3(0, 2);
 
-    // We prevent log vertical walls to improve solvability
+    // We prevent long vertical walls to improve solvability
     for (int x = 0; x < main_width; x++)
         for (int y = 0; y < main_height; y++) {
             if (is_left_wall(x, y) && is_left_wall(x, y + 1) && is_left_wall(x, y + 2))
@@ -232,8 +233,7 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     c.add_component(agent, Component_Collision{ .bounds{ -0.25f, -0.8f, 0.5f, 0.8f } });
     c.add_component(agent, Component_Dynamics{});
     c.add_component(agent, Component_Agent{});
-
-    std::vector<int> spike_cells;
+    c.add_component(agent, Component_Particles{ .particles = std::vector<Particle>(10), .offset{ 0.0f, -0.2f } });
 
     for (int i = 0; i < tile_ids.size(); i++) {
         if (tile_ids[i] == spike) {
@@ -277,7 +277,7 @@ void System_Tilemap::render(int theme) {
         }
 }
 
-std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func, bool fallthrough, float step_y) {
+std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, const std::function<Collision_Type(Tile_ID)> &collision_id_func) {
     bool collided = false;
 
     int lower_x = std::floor(rectangle.x);
@@ -307,18 +307,8 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, cons
                     Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
 
                     if (collision.width > collision.height) {
-                        if (type == down_only) {
-                            bool inside = (rectangle.y + rectangle.height - step_y > tile.y);
-
-                            if (step_y > 0.01f && !fallthrough && !inside) {
-                                rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
-                                collided = true;
-                            }
-                        }
-                        else {
-                            rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
-                            collided = true;
-                        }
+                        rectangle.y = (collision_center.y > center.y ? tile.y - rectangle.height : tile.y + tile.height);
+                        collided = true;
                     }
                 }
             }
@@ -340,10 +330,8 @@ std::pair<Vector2, bool> System_Tilemap::get_collision(Rectangle rectangle, cons
                     Vector2 collision_center{ collision.x + collision.width * 0.5f, collision.y + collision.height * 0.5f };
 
                     if (collision.width <= collision.height) {
-                        if (type != down_only) {
-                            rectangle.x = (collision_center.x > center.x ? tile.x - rectangle.width : tile.x + tile.width);
-                            collided = true;
-                        }
+                        rectangle.x = (collision_center.x > center.x ? tile.x - rectangle.width : tile.x + tile.width);
+                        collided = true;
                     }
                 }
             }

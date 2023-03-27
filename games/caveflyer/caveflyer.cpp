@@ -29,7 +29,7 @@ const int num_actions = 15;
 int window_width = 512;
 int window_height = 512;
 
-float game_zoom = 0.3f; // Base game zoom level
+float game_zoom = 0.5f; // Base game zoom level
 
 std::mt19937 rng;
 
@@ -47,74 +47,35 @@ float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it t
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
-std::shared_ptr<System_Mob_AI> mob_ai;
 std::shared_ptr<System_Hazard> hazard;
+std::shared_ptr<System_Mob_AI> mob_ai;
 std::shared_ptr<System_Goal> goal;
 std::shared_ptr<System_Agent> agent;
 std::shared_ptr<System_Particles> particles;
 
 System_Tilemap::Config tilemap_config;
-int current_map_theme = 0;
 
 // Big list of different background images
 std::vector<std::string> background_names {
-    "assets/platform_backgrounds/alien_bg.png",
-    "assets/platform_backgrounds/another_world_bg.png",
-    "assets/platform_backgrounds/back_cave.png",
-    "assets/platform_backgrounds/caverns.png",
-    "assets/platform_backgrounds/cyberpunk_bg.png",
-    "assets/platform_backgrounds/parallax_forest.png",
-    "assets/platform_backgrounds/scifi_bg.png",
-    "assets/platform_backgrounds/scifi2_bg.png",
-    "assets/platform_backgrounds/living_tissue_bg.png",
-    "assets/platform_backgrounds/airadventurelevel1.png",
-    "assets/platform_backgrounds/airadventurelevel2.png",
-    "assets/platform_backgrounds/airadventurelevel3.png",
-    "assets/platform_backgrounds/airadventurelevel4.png",
-    "assets/platform_backgrounds/cave_background.png",
-    "assets/platform_backgrounds/blue_desert.png",
-    "assets/platform_backgrounds/blue_grass.png",
-    "assets/platform_backgrounds/blue_land.png",
-    "assets/platform_backgrounds/blue_shroom.png",
-    "assets/platform_backgrounds/colored_desert.png",
-    "assets/platform_backgrounds/colored_grass.png",
-    "assets/platform_backgrounds/colored_land.png",
-    "assets/platform_backgrounds/colored_shroom.png",
-    "assets/platform_backgrounds/landscape1.png",
-    "assets/platform_backgrounds/landscape2.png",
-    "assets/platform_backgrounds/landscape3.png",
-    "assets/platform_backgrounds/landscape4.png",
-    "assets/platform_backgrounds/battleback1.png",
-    "assets/platform_backgrounds/battleback2.png",
-    "assets/platform_backgrounds/battleback3.png",
-    "assets/platform_backgrounds/battleback4.png",
-    "assets/platform_backgrounds/battleback5.png",
-    "assets/platform_backgrounds/battleback6.png",
-    "assets/platform_backgrounds/battleback7.png",
-    "assets/platform_backgrounds/battleback8.png",
-    "assets/platform_backgrounds/battleback9.png",
-    "assets/platform_backgrounds/battleback10.png",
-    "assets/platform_backgrounds/sunrise.png",
-    "assets/platform_backgrounds_2/beach1.png",
-    "assets/platform_backgrounds_2/beach2.png",
-    "assets/platform_backgrounds_2/beach3.png",
-    "assets/platform_backgrounds_2/beach4.png",
-    "assets/platform_backgrounds_2/fantasy1.png",
-    "assets/platform_backgrounds_2/fantasy2.png",
-    "assets/platform_backgrounds_2/fantasy3.png",
-    "assets/platform_backgrounds_2/fantasy4.png",
-    "assets/platform_backgrounds_2/candy1.png",
-    "assets/platform_backgrounds_2/candy2.png",
-    "assets/platform_backgrounds_2/candy3.png",
-    "assets/platform_backgrounds_2/candy4.png"
+    "assets/space_backgrounds/deep_space_01.png",
+    "assets/space_backgrounds/spacegen_01.png",
+    "assets/space_backgrounds/milky_way_01.png",
+    "assets/space_backgrounds/ez_space_lite_01.png",
+    "assets/space_backgrounds/meyespace_v1_01.png",
+    "assets/space_backgrounds/eye_nebula_01.png",
+    "assets/space_backgrounds/deep_sky_01.png",
+    "assets/space_backgrounds/space_nebula_01.png",
+    "assets/space_backgrounds/Background-1.png",
+    "assets/space_backgrounds/Background-2.png",
+    "assets/space_backgrounds/Background-3.png",
+    "assets/space_backgrounds/Background-4.png",
+    "assets/space_backgrounds/parallax-space-backgound.png"
 };
 
 std::vector<Asset_Texture> background_textures;
 
 int current_background_index = 0;
 float current_background_offset_x = 0.0f;
-
-int current_agent_theme = 0;
 
 // Forward declarations
 void render_game(bool is_obs);
@@ -239,10 +200,9 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Collision>();
     c.register_component<Component_Dynamics>();
     c.register_component<Component_Sprite>();
-    c.register_component<Component_Animation>();
+    c.register_component<Component_Mob_AI>();
     c.register_component<Component_Hazard>();
     c.register_component<Component_Goal>();
-    c.register_component<Component_Mob_AI>();
     c.register_component<Component_Agent>(); // Player
     c.register_component<Component_Particles>();
 
@@ -259,17 +219,17 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     tilemap->init();
 
-    // Mob AI setup
-    mob_ai = c.register_system<System_Mob_AI>();
-    Signature mob_ai_signature;
-    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mobs
-    c.set_system_signature<System_Mob_AI>(mob_ai_signature);
-
     // Hazard system setup
     hazard = c.register_system<System_Hazard>();
     Signature hazard_signature;
     hazard_signature.set(c.get_component_type<Component_Hazard>()); // Operate only on hazards
     c.set_system_signature<System_Hazard>(hazard_signature);
+
+    // Mob AI system setup
+    mob_ai = c.register_system<System_Mob_AI>();
+    Signature mob_ai_signature;
+    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mob ai
+    c.set_system_signature<System_Mob_AI>(mob_ai_signature);
 
     // Goal system setup
     goal = c.register_system<System_Goal>();
@@ -356,14 +316,20 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Sub-steps
     for (int ss = 0; ss < sub_steps; ss++) {
         // Update systems
+        bool isAlive;
+        bool achieved_goal;
+        int targets_destroyed;
+
+        std::tie(isAlive, achieved_goal, targets_destroyed) = agent->update(dt, hazard, goal, action);
+
         mob_ai->update(dt);
-        std::pair<bool, bool> result = agent->update(dt, hazard, goal, action);
+
         particles->update(dt);
         sprite_render->update(dt);
 
-        step_data.reward.f = result.second * 10.0f;
+        step_data.reward.f = achieved_goal * 10.0f + targets_destroyed * 3.0f;
 
-        step_data.terminated = !result.first || result.second;
+        step_data.terminated = !isAlive || achieved_goal;
         step_data.truncated = false;
 
         if (step_data.terminated)
@@ -432,6 +398,10 @@ void cenv_close() {
     
     // ---------------------- Game ----------------------
 
+    // Explcit destruct before renderer
+    background_textures.clear();
+    manager_texture.clear();
+
     SDL_DestroyRenderer(window_renderer);
     SDL_DestroyRenderer(obs_renderer);
 
@@ -463,10 +433,10 @@ void render_game(bool is_obs) {
     gr.render_texture(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 64.0f * unit_to_pixels / background->height);
 
     sprite_render->render(negative_z);
-    tilemap->render(current_map_theme);
+    tilemap->render(0);
     particles->render();
     sprite_render->render(positive_z);
-    agent->render(current_agent_theme);
+    agent->render();
 }
 
 void reset() {
@@ -483,25 +453,8 @@ void reset() {
 
     current_background_offset_x = dist01(rng);
 
-    // Spawn the player (agent)
-    Entity e = c.create_entity();
-
-    Vector2 pos{ 1.5f, tilemap->get_height() - 1 - 1.0f };
-
-    c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -1.0f, 1.0f, 1.0f } });
-    c.add_component(e, Component_Dynamics{});
-    c.add_component(e, Component_Agent{});
-
-    // Determine themes
-    std::uniform_int_distribution<int> agent_theme_dist(0, agent_themes.size() - 1);
-
-    current_agent_theme = agent_theme_dist(rng);
-
-    std::uniform_int_distribution<int> map_theme_dist(0, wall_themes.size() - 1);
-
-    current_map_theme = map_theme_dist(rng);
-
     // Clear before next render to remove now destroyed entities from previous episode
     sprite_render->clear_render();
+
+    agent->reset();
 }

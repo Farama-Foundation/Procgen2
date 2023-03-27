@@ -13,21 +13,6 @@ void System_Sprite_Render::update(float dt) {
     for (auto const &e : entities) {
         auto &sprite = c.get_component<Component_Sprite>(e);
 
-        // If also has animation
-        if (c.entity_manager.get_signature(e)[c.component_manager.get_component_type<Component_Animation>()]) {
-            // Has animation component
-            auto &animation = c.get_component<Component_Animation>(e);
-
-            animation.t += dt;
-
-            int frames_advance = animation.t * animation.rate;
-            animation.t -= frames_advance / animation.rate; 
-                
-            animation.frame_index = (animation.frame_index + frames_advance) % animation.frames.size();
-
-            sprite.texture = animation.frames[animation.frame_index];
-        }
-
         render_entities[index] = std::make_pair(sprite.z, e);
         index++;
     }
@@ -136,7 +121,7 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
 
         std::pair<Vector2, bool> collision_data = tilemap->get_collision(world_collision, [](Tile_ID id) -> Collision_Type {
             return (id == wall_mid || id == wall_top ? full : none);
-        }, fallthrough, dynamics.velocity.y * dt);
+        });
 
         // If was moved up, on ground
         Vector2 delta_position{ collision_data.first.x - world_collision.x, collision_data.first.y - world_collision.y };
@@ -203,6 +188,14 @@ std::pair<bool, bool> System_Agent::update(float dt, const std::shared_ptr<Syste
             agent.face_forward = true;
         else if (movement_x < 0.0f)
             agent.face_forward = false;
+
+        // Set info
+        info.to_goal = Vector2{ tilemap->getInfo().goal_pos.x - transform.position.x, tilemap->getInfo().goal_pos.y - transform.position.y };
+
+        // Enable particles on jump
+        auto &particles = c.get_component<Component_Particles>(e);
+
+        particles.enabled = !agent.on_ground || abs(dynamics.velocity.x) > 0.01f;
     }
 
     return std::make_pair(alive, achieved_goal);
@@ -273,7 +266,7 @@ void System_Particles::update(float dt) {
         particles.spawn_timer += dt;
 
         // If time to spawn new particle
-        if (dead_index != -1 && particles.spawn_timer >= particles.spawn_time) {
+        if (dead_index != -1 && particles.spawn_timer >= particles.spawn_time && particles.enabled) {
             particles.spawn_timer = std::fmod(particles.spawn_timer, particles.spawn_time);
 
             Particle &p = particles.particles[dead_index];

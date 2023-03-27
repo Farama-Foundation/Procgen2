@@ -19,6 +19,11 @@ struct Component_Dynamics {
     Vector2 velocity{ 0.0f, 0.0f };
 };
 
+// AI
+struct Component_Mob_AI {
+    float hatch_timer = 0.0f;
+};
+
 // Sprites
 struct Component_Sprite {
     // Relative to transform
@@ -33,35 +38,20 @@ struct Component_Sprite {
     Asset_Texture* texture = nullptr;
 };
 
-// Reset-triggering
-struct Component_Hazard {};
-struct Component_Goal {};
+struct Component_Animation { // Requires a Component_Sprite as well in order to function
+    std::vector<Asset_Texture*> frames;
+
+    int frame_index = 0;
+    float rate = 0.1f;
+    float t = 0.0f;
+};
+
+struct Component_Point {
+    bool is_orb = false;
+};
 
 struct Component_Agent {
     int action = 0;
-    bool on_ground = false;
 
-    bool face_forward = true;
-
-    // Agent-specific animation
-    float rate = 0.1f;
-    float t = 0.0f;
-
-    float jump_timer = 0.0f;
-    int jumps_left = 2;
-};
-
-struct Particle {
-    Vector2 position;
-    float life = 0.0f;
-};
-
-struct Component_Particles {
-    std::vector<Particle> particles;
-
-    Vector2 offset{ 0.0f, 0.0f };
-    float lifespan = 5.0f;
-    float spawn_timer = 0.0f;
-    float spawn_time = 0.5f;
-    bool enabled = true;
+    Vector2 next_velocity{ 0.0f, 0.0f };
 };
