@@ -26,6 +26,7 @@ struct Component_Sprite {
     float rotation = 0.0f;
     float scale = 1.0f;
     bool flip_x = false;
+    bool flip_y = false;
 
     Color tint{ 255, 255, 255, 255 };
     float z = 0.0f; // Ordering
@@ -33,35 +34,21 @@ struct Component_Sprite {
     Asset_Texture* texture = nullptr;
 };
 
+struct Component_Mob_AI {
+    float phase_timer = 0.0f;
+    int phase_index = 0;
+    int weapon_index = 0;
+
+    float attack_timer = 0.0f;
+
+    int hp = 0;
+};
+
 // Reset-triggering
-struct Component_Hazard {};
-struct Component_Goal {};
+struct Component_Hazard {
+    bool destroyable = false;
+};
 
 struct Component_Agent {
     int action = 0;
-    bool on_ground = false;
-
-    bool face_forward = true;
-
-    // Agent-specific animation
-    float rate = 0.1f;
-    float t = 0.0f;
-
-    float jump_timer = 0.0f;
-    int jumps_left = 2;
-};
-
-struct Particle {
-    Vector2 position;
-    float life = 0.0f;
-};
-
-struct Component_Particles {
-    std::vector<Particle> particles;
-
-    Vector2 offset{ 0.0f, 0.0f };
-    float lifespan = 5.0f;
-    float spawn_timer = 0.0f;
-    float spawn_time = 0.5f;
-    bool enabled = true;
 };

@@ -4,7 +4,7 @@ from cenv.cenv import CEnv
 import cv2
 import time
 
-env = CEnv("games/coinrun/build/libCoinRun.so")
+env = CEnv("games/chaser/build/libChaser.so")
 
 print(env.observation_space)
 
@@ -30,12 +30,11 @@ for i in range(1000000):
         print(average)
 
     obs_screen = obs["screen"].copy().reshape((64, 64, 3))
+
+    if i % 1000 == 0:
+        cv2.imshow("Debug", obs_screen)
+        cv2.waitKey(1)
     
-    cv2.imshow("Debug", cv2.cvtColor(obs_screen, cv2.COLOR_RGB2BGR))
-
-    if cv2.waitKey(1) & 0x0f == ord('q'):
-        break
-
     if term:
         print("Resetting...")
         obs, info = env.reset()

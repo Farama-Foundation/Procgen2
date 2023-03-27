@@ -53,6 +53,11 @@ public:
 // --------------------- Player --------------------
 
 class System_Agent : public System {
+public:
+    struct Agent_Info {
+        Vector2 to_goal = Vector2{ 0.0f, 0.0f };
+    };
+
 private:
     // Agent textures
     Asset_Texture stand_texture;
@@ -60,12 +65,18 @@ private:
     Asset_Texture walk1_texture;
     Asset_Texture walk2_texture;
 
+    Agent_Info info;
+
 public:
     void init(); // Needs to load sprites
 
     // Returns alive status (false if touched hazard), and whether touched a goal (carrot)
     std::pair<bool, bool> update(float dt, const std::shared_ptr<System_Hazard> &hazard, const std::shared_ptr<System_Goal> &goal, int action);
     void render();
+
+    const Agent_Info &getInfo() const {
+        return info;
+    }
 };
 
 // ------------------- Particles ------------------

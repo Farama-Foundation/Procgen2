@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(Jumper)
+project(CaveFlyer)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
@@ -31,7 +31,7 @@ include_directories("${PROJECT_SOURCE_DIR}")
 
 set(SOURCE_PATH "${PROJECT_SOURCE_DIR}")
 set(SOURCES
-    "${SOURCE_PATH}/jumper.cpp"
+    "${SOURCE_PATH}/caveflyer.cpp"
     "${SOURCE_PATH}/ecs.cpp"
     "${SOURCE_PATH}/helpers.cpp"
     "${SOURCE_PATH}/renderer.cpp"
@@ -42,9 +42,9 @@ set(SOURCES
     "${SOURCE_PATH}/tilemap.cpp"
 )
 
-add_library(Jumper SHARED ${SOURCES})
+add_library(CaveFlyer SHARED ${SOURCES})
 
-target_link_libraries(Jumper SDL2::Main SDL2::Image)
+target_link_libraries(CaveFlyer SDL2::Main SDL2::Image)
 
-set_target_properties(Jumper PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+set_target_properties(CaveFlyer PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 

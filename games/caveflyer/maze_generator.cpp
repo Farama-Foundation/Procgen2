@@ -67,17 +67,17 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
     num_free_cells = 0;
     free_cell_set.clear();
 
-    std::unordered_set<int>* s0 = &cell_sets[0];
-    s0->clear();
-    s0->insert(0);
+    std::unordered_set<int> &s0 = cell_sets[0];
+    s0.clear();
+    s0.insert(0);
     cell_sets_indices[0] = 0;
 
     int maze_size = maze_width * maze_height;
 
     for (int i = 1; i < maze_size; i++) {
-        std::unordered_set<int>* s1 = &cell_sets[i];
-        s1->clear();
-        s1->insert(i);
+        std::unordered_set<int> &s1 = cell_sets[i];
+        s1.clear();
+        s1.insert(i);
         cell_sets_indices[i] = i;
     }
 
@@ -103,9 +103,9 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
         Wall wall = walls[n];
 
         int s0_index = cell_sets_indices[wall.y1 + maze_height * wall.x1];
-        s0 = &cell_sets[s0_index];
+        s0 = cell_sets[s0_index];
         int s1_index = cell_sets_indices[wall.y2 + maze_height * wall.x2];
-        std::unordered_set<int>* s1 = &cell_sets[s1_index];
+        std::unordered_set<int> &s1 = cell_sets[s1_index];
 
         int x0 = (wall.x1 + wall.x2) / 2;
         int y0 = (wall.y1 + wall.y2) / 2;
@@ -118,10 +118,10 @@ void Maze_Generator::generate_maze(int maze_width, int maze_height, std::mt19937
             set_free_cell(x0, y0);
             set_free_cell(wall.x2, wall.y2);
 
-            s1->insert(s0->begin(), s0->end());
-            s1->insert(center);
+            s1.insert(s0.begin(), s0.end());
+            s1.insert(center);
 
-            for (std::unordered_set<int>::const_iterator it = s1->begin(); it != s1->end(); it++)
+            for (std::unordered_set<int>::const_iterator it = s1.begin(); it != s1.end(); it++)
                 cell_sets_indices[*it] = s1_index;
         }
 

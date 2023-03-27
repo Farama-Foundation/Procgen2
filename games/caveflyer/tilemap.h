@@ -19,9 +19,8 @@ enum Distribution_Mode {
 enum Tile_ID {
     out_of_bounds = -1,
     empty = 0,
-    wall_top,
-    wall_mid,
-    spike,
+    wall,
+    marker,
     num_ids
 };
 
@@ -54,12 +53,11 @@ private:
 
     Tilemap_Info info;
 
-    void spawn_spike(int x, int y);
+    void spawn_obstacle(int cell);
+    void spawn_target(int cell);
+    void spawn_enemy(int cell, const Vector2 &agent_pos, std::mt19937 &rng);
 
-    bool is_space_on_ground(int x, int y);
-    bool is_top_wall(int x, int y);
-    bool is_left_wall(int x, int y);
-    bool is_right_wall(int x, int y);
+    static int check_neighbors(const Vector2 &p0, const Vector2 &p1);
 
 public:
     // Initialize the tilemap
@@ -83,7 +81,7 @@ public:
     // Get a tile
     Tile_ID get(int x, int y) {
         if (x < 0 || y < 0 || x >= map_width || y >= map_height)
-            return wall_mid; // Out of bounds is a wall
+            return wall; // Out of bounds is a wall
 
         return tile_ids[y + x * map_height];
     }

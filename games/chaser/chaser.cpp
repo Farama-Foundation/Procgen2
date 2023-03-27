@@ -29,7 +29,7 @@ const int num_actions = 15;
 int window_width = 512;
 int window_height = 512;
 
-float game_zoom = 0.3f; // Base game zoom level
+float game_zoom = 0.25f; // Base game zoom level
 
 std::mt19937 rng;
 
@@ -47,74 +47,29 @@ float dt = 1.0f / sub_steps; // Not relative to time in seconds, need to do it t
 // Systems
 std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Tilemap> tilemap;
-std::shared_ptr<System_Mob_AI> mob_ai;
-std::shared_ptr<System_Hazard> hazard;
-std::shared_ptr<System_Goal> goal;
+std::shared_ptr<System_Point> point;
 std::shared_ptr<System_Agent> agent;
-std::shared_ptr<System_Particles> particles;
+std::shared_ptr<System_Mob_AI> mob_ai;
 
 System_Tilemap::Config tilemap_config;
-int current_map_theme = 0;
 
 // Big list of different background images
 std::vector<std::string> background_names {
-    "assets/platform_backgrounds/alien_bg.png",
-    "assets/platform_backgrounds/another_world_bg.png",
-    "assets/platform_backgrounds/back_cave.png",
-    "assets/platform_backgrounds/caverns.png",
-    "assets/platform_backgrounds/cyberpunk_bg.png",
-    "assets/platform_backgrounds/parallax_forest.png",
-    "assets/platform_backgrounds/scifi_bg.png",
-    "assets/platform_backgrounds/scifi2_bg.png",
-    "assets/platform_backgrounds/living_tissue_bg.png",
-    "assets/platform_backgrounds/airadventurelevel1.png",
-    "assets/platform_backgrounds/airadventurelevel2.png",
-    "assets/platform_backgrounds/airadventurelevel3.png",
-    "assets/platform_backgrounds/airadventurelevel4.png",
-    "assets/platform_backgrounds/cave_background.png",
-    "assets/platform_backgrounds/blue_desert.png",
-    "assets/platform_backgrounds/blue_grass.png",
-    "assets/platform_backgrounds/blue_land.png",
-    "assets/platform_backgrounds/blue_shroom.png",
-    "assets/platform_backgrounds/colored_desert.png",
-    "assets/platform_backgrounds/colored_grass.png",
-    "assets/platform_backgrounds/colored_land.png",
-    "assets/platform_backgrounds/colored_shroom.png",
-    "assets/platform_backgrounds/landscape1.png",
-    "assets/platform_backgrounds/landscape2.png",
-    "assets/platform_backgrounds/landscape3.png",
-    "assets/platform_backgrounds/landscape4.png",
-    "assets/platform_backgrounds/battleback1.png",
-    "assets/platform_backgrounds/battleback2.png",
-    "assets/platform_backgrounds/battleback3.png",
-    "assets/platform_backgrounds/battleback4.png",
-    "assets/platform_backgrounds/battleback5.png",
-    "assets/platform_backgrounds/battleback6.png",
-    "assets/platform_backgrounds/battleback7.png",
-    "assets/platform_backgrounds/battleback8.png",
-    "assets/platform_backgrounds/battleback9.png",
-    "assets/platform_backgrounds/battleback10.png",
-    "assets/platform_backgrounds/sunrise.png",
-    "assets/platform_backgrounds_2/beach1.png",
-    "assets/platform_backgrounds_2/beach2.png",
-    "assets/platform_backgrounds_2/beach3.png",
-    "assets/platform_backgrounds_2/beach4.png",
-    "assets/platform_backgrounds_2/fantasy1.png",
-    "assets/platform_backgrounds_2/fantasy2.png",
-    "assets/platform_backgrounds_2/fantasy3.png",
-    "assets/platform_backgrounds_2/fantasy4.png",
-    "assets/platform_backgrounds_2/candy1.png",
-    "assets/platform_backgrounds_2/candy2.png",
-    "assets/platform_backgrounds_2/candy3.png",
-    "assets/platform_backgrounds_2/candy4.png"
+    "assets/topdown_backgrounds/floortiles.png",
+    "assets/topdown_backgrounds/backgrounddetailed1.png",
+    "assets/topdown_backgrounds/backgrounddetailed2.png",
+    "assets/topdown_backgrounds/backgrounddetailed3.png",
+    "assets/topdown_backgrounds/backgrounddetailed4.png",
+    "assets/topdown_backgrounds/backgrounddetailed5.png",
+    "assets/topdown_backgrounds/backgrounddetailed6.png",
+    "assets/topdown_backgrounds/backgrounddetailed7.png",
+    "assets/topdown_backgrounds/backgrounddetailed8.png"
 };
 
 std::vector<Asset_Texture> background_textures;
 
 int current_background_index = 0;
 float current_background_offset_x = 0.0f;
-
-int current_agent_theme = 0;
 
 // Forward declarations
 void render_game(bool is_obs);
@@ -240,11 +195,9 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     c.register_component<Component_Dynamics>();
     c.register_component<Component_Sprite>();
     c.register_component<Component_Animation>();
-    c.register_component<Component_Hazard>();
-    c.register_component<Component_Goal>();
-    c.register_component<Component_Mob_AI>();
+    c.register_component<Component_Point>();
     c.register_component<Component_Agent>(); // Player
-    c.register_component<Component_Particles>();
+    c.register_component<Component_Mob_AI>();
 
     // Sprite rendering system
     sprite_render = c.register_system<System_Sprite_Render>();
@@ -259,23 +212,11 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     tilemap->init();
 
-    // Mob AI setup
-    mob_ai = c.register_system<System_Mob_AI>();
-    Signature mob_ai_signature;
-    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mobs
-    c.set_system_signature<System_Mob_AI>(mob_ai_signature);
-
-    // Hazard system setup
-    hazard = c.register_system<System_Hazard>();
-    Signature hazard_signature;
-    hazard_signature.set(c.get_component_type<Component_Hazard>()); // Operate only on hazards
-    c.set_system_signature<System_Hazard>(hazard_signature);
-
-    // Goal system setup
-    goal = c.register_system<System_Goal>();
-    Signature goal_signature;
-    goal_signature.set(c.get_component_type<Component_Goal>()); // Operate only on goals
-    c.set_system_signature<System_Goal>(goal_signature);
+    // Point system setup
+    point = c.register_system<System_Point>();
+    Signature point_signature;
+    point_signature.set(c.get_component_type<Component_Point>()); // Operate only on points
+    c.set_system_signature<System_Point>(point_signature);
 
     // Agent system setup
     agent = c.register_system<System_Agent>();
@@ -285,13 +226,13 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     agent->init();
 
-    // Particle system setup
-    particles = c.register_system<System_Particles>();
-    Signature particles_signature;
-    particles_signature.set(c.get_component_type<Component_Particles>()); // Operate only on particles
-    c.set_system_signature<System_Particles>(particles_signature);
+    // Mob AI setup
+    mob_ai = c.register_system<System_Mob_AI>();
+    Signature mob_ai_signature;
+    mob_ai_signature.set(c.get_component_type<Component_Mob_AI>()); // Operate only on mobs
+    c.set_system_signature<System_Mob_AI>(mob_ai_signature);
 
-    particles->init();
+    mob_ai->init();
 
     // Load backgrounds
     background_textures.resize(background_names.size());
@@ -356,14 +297,16 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     // Sub-steps
     for (int ss = 0; ss < sub_steps; ss++) {
         // Update systems
-        mob_ai->update(dt);
-        std::pair<bool, bool> result = agent->update(dt, hazard, goal, action);
-        particles->update(dt);
+        agent->update(dt, action);
+        bool dead = mob_ai->update(dt, rng);
+
+        point->update();
+
         sprite_render->update(dt);
 
-        step_data.reward.f = result.second * 10.0f;
+        step_data.reward.f = point->point_delta * 0.04f + (point->num_points_available == 0) * 10.0f;
 
-        step_data.terminated = !result.first || result.second;
+        step_data.terminated = dead || (point->num_points_available == 0);
         step_data.truncated = false;
 
         if (step_data.terminated)
@@ -432,6 +375,10 @@ void cenv_close() {
     
     // ---------------------- Game ----------------------
 
+    // Explcit destruct before renderer
+    background_textures.clear();
+    manager_texture.clear();
+
     SDL_DestroyRenderer(window_renderer);
     SDL_DestroyRenderer(obs_renderer);
 
@@ -451,7 +398,9 @@ void render_game(bool is_obs) {
     int width = is_obs ? obs_width : window_width;
     int height = is_obs ? obs_height : window_height;
 
-    gr.camera_scale = game_zoom * static_cast<float>(width) / static_cast<float>(obs_width);
+    game_zoom = static_cast<float>(width) * pixels_to_unit / static_cast<float>(tilemap->get_width());
+
+    gr.camera_scale = game_zoom;
     gr.camera_size = (Vector2){ static_cast<float>(width), static_cast<float>(height) };
 
     // Draw background image
@@ -463,10 +412,9 @@ void render_game(bool is_obs) {
     gr.render_texture(background, Vector2{ -current_background_offset_x * extra_width, 0.0f }, 64.0f * unit_to_pixels / background->height);
 
     sprite_render->render(negative_z);
-    tilemap->render(current_map_theme);
-    particles->render();
+    tilemap->render();
     sprite_render->render(positive_z);
-    agent->render(current_agent_theme);
+    agent->render();
 }
 
 void reset() {
@@ -483,25 +431,13 @@ void reset() {
 
     current_background_offset_x = dist01(rng);
 
-    // Spawn the player (agent)
-    Entity e = c.create_entity();
+    // Reset systems
+    agent->reset();
+    mob_ai->reset();
+    sprite_render->reset();
+    point->reset();
 
-    Vector2 pos{ 1.5f, tilemap->get_height() - 1 - 1.0f };
-
-    c.add_component(e, Component_Transform{ .position{ pos } });
-    c.add_component(e, Component_Collision{ .bounds{ -0.5f, -1.0f, 1.0f, 1.0f } });
-    c.add_component(e, Component_Dynamics{});
-    c.add_component(e, Component_Agent{});
-
-    // Determine themes
-    std::uniform_int_distribution<int> agent_theme_dist(0, agent_themes.size() - 1);
-
-    current_agent_theme = agent_theme_dist(rng);
-
-    std::uniform_int_distribution<int> map_theme_dist(0, wall_themes.size() - 1);
-
-    current_map_theme = map_theme_dist(rng);
-
-    // Clear before next render to remove now destroyed entities from previous episode
-    sprite_render->clear_render();
+    // Set camera
+    gr.camera_position.x = tilemap->get_width() * 0.5f * unit_to_pixels;
+    gr.camera_position.y = tilemap->get_height() * 0.5f * unit_to_pixels;
 }

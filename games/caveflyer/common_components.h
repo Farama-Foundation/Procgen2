@@ -33,26 +33,24 @@ struct Component_Sprite {
     Asset_Texture* texture = nullptr;
 };
 
+struct Component_Mob_AI {
+};
+
 // Reset-triggering
-struct Component_Hazard {};
+struct Component_Hazard {
+    bool destroyable = false;
+};
+
 struct Component_Goal {};
 
 struct Component_Agent {
     int action = 0;
-    bool on_ground = false;
-
-    bool face_forward = true;
-
-    // Agent-specific animation
-    float rate = 0.1f;
-    float t = 0.0f;
-
-    float jump_timer = 0.0f;
-    int jumps_left = 2;
 };
 
 struct Particle {
     Vector2 position;
+    Vector2 dir;
+    float rotation;
     float life = 0.0f;
 };
 
@@ -60,8 +58,8 @@ struct Component_Particles {
     std::vector<Particle> particles;
 
     Vector2 offset{ 0.0f, 0.0f };
-    float lifespan = 5.0f;
+    float lifespan = 3.0f;
     float spawn_timer = 0.0f;
-    float spawn_time = 0.5f;
+    float spawn_time = 0.3f;
     bool enabled = true;
 };

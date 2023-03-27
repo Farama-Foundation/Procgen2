@@ -6,9 +6,9 @@ import pygame.surfarray
 import procgen
 import time
 
-env_original = gym.make("procgen:procgen-maze-v0", render_mode="rgb_array")
+env_original = gym.make("procgen:procgen-chaser-v0", render_mode="rgb_array")
 
-env = CEnv("games/maze/build/libMaze.so")
+env = CEnv("games/chaser/build/libChaser.so")
 
 obs_original = env_original.reset()
 obs, _ = env.reset(options={ "width": 512, "height": 512 })
