@@ -73,7 +73,7 @@ void Renderer::render_texture(Asset_Texture* texture, const Vector2 &position, f
         // Flip src_rect
         src_recti.x = texture->width - src_recti.w - src_recti.x;
 
-    SDL_RenderCopyExF(renderer, rendering_obs ? texture->obs_texture : texture->window_texture, &src_recti, &dst_rect, 0.0f, NULL, flip_horizontal ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+    SDL_RenderTextureRotated(renderer, rendering_obs ? texture->obs_texture : texture->window_texture, &src_rect, &dst_rect, 0.0f, NULL, flip_horizontal ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 
     if (alpha != 1.0f)
         SDL_SetTextureAlphaMod(current_texture, 255);
