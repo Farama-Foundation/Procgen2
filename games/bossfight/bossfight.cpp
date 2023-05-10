@@ -191,8 +191,8 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     IMG_Init(IMG_INIT_PNG);
 
-    window_target = SDL_CreateRGBSurface(0, window_width, window_height, 32, rmask, gmask, bmask, amask);
-    obs_target = SDL_CreateRGBSurface(0, obs_width, obs_height, 32, rmask, gmask, bmask, amask);
+    window_target = SDL_CreateSurface(window_width, window_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
+    obs_target = SDL_CreateSurface(obs_width, obs_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
 
     window_renderer = SDL_CreateSoftwareRenderer(window_target);
     obs_renderer = SDL_CreateSoftwareRenderer(obs_target);
@@ -393,8 +393,8 @@ void cenv_close() {
     SDL_DestroyRenderer(window_renderer);
     SDL_DestroyRenderer(obs_renderer);
 
-    SDL_FreeSurface(window_target);
-    SDL_FreeSurface(obs_target);
+    SDL_DestroySurface(window_target);
+    SDL_DestroySurface(obs_target);
 }
 
 // Rendering

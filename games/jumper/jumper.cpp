@@ -224,8 +224,8 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     IMG_Init(IMG_INIT_PNG);
 
-    window_target = SDL_CreateRGBSurface(0, window_width, window_height, 32, rmask, gmask, bmask, amask);
-    obs_target = SDL_CreateRGBSurface(0, obs_width, obs_height, 32, rmask, gmask, bmask, amask);
+    window_target = SDL_CreateSurface(window_width, window_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
+    obs_target = SDL_CreateSurface(obs_width, obs_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
 
     window_renderer = SDL_CreateSoftwareRenderer(window_target);
     obs_renderer = SDL_CreateSoftwareRenderer(obs_target);
@@ -437,8 +437,8 @@ void cenv_close() {
     SDL_DestroyRenderer(window_renderer);
     SDL_DestroyRenderer(obs_renderer);
 
-    SDL_FreeSurface(window_target);
-    SDL_FreeSurface(obs_target);
+    SDL_DestroySurface(window_target);
+    SDL_DestroySurface(obs_target);
 }
 
 // Rendering
@@ -486,7 +486,7 @@ void render_game(bool is_obs) {
     {
         SDL_FRect dst_rect{ static_cast<float>(width) - compass_size * game_zoom + compass_offset.x * game_zoom, compass_offset.y * game_zoom, compass_size * game_zoom, compass_size * game_zoom };
 
-        SDL_RenderCopyExF(gr.get_renderer(), is_obs ? compass_circle.obs_texture : compass_circle.window_texture, NULL, &dst_rect, 0.0f, NULL, SDL_FLIP_NONE);
+        SDL_RenderTextureRotated(gr.get_renderer(), is_obs ? compass_circle.obs_texture : compass_circle.window_texture, NULL, &dst_rect, 0.0f, NULL, SDL_FLIP_NONE);
     }
 
     // Compass needle
@@ -497,7 +497,7 @@ void render_game(bool is_obs) {
         dst_rect.x += compass_size * 0.25f * dir.x * game_zoom;
         dst_rect.y += compass_size * 0.25f * dir.y * game_zoom;
 
-        SDL_RenderCopyExF(gr.get_renderer(), is_obs ? compass_needle.obs_texture : compass_needle.window_texture, NULL, &dst_rect, angle, NULL, SDL_FLIP_NONE);
+        SDL_RenderTextureRotated(gr.get_renderer(), is_obs ? compass_needle.obs_texture : compass_needle.window_texture, NULL, &dst_rect, angle, NULL, SDL_FLIP_NONE);
     }
 
     // Compass bar
@@ -505,7 +505,7 @@ void render_game(bool is_obs) {
 
         SDL_FRect dst_rect{ static_cast<float>(width) - compass_size * game_zoom + compass_offset.x * game_zoom, compass_size * game_zoom + compass_offset.y * game_zoom, compass_size * game_zoom * ratio, compass_size * 0.15f * game_zoom };
 
-        SDL_RenderCopyExF(gr.get_renderer(), is_obs ? compass_bar.obs_texture : compass_bar.window_texture, NULL, &dst_rect, 0.0f, NULL, SDL_FLIP_NONE);
+        SDL_RenderTextureRotated(gr.get_renderer(), is_obs ? compass_bar.obs_texture : compass_bar.window_texture, NULL, &dst_rect, 0.0f, NULL, SDL_FLIP_NONE);
     }
 }
 

@@ -2,7 +2,7 @@
 
 #include "common_assets.h"
 
-void Renderer::render_texture(Asset_Texture* texture, const Vector2 &position, float scale, float alpha, bool flip_horizontal, bool flip_vertical) {
+void Renderer::render_texture(Asset_Texture* texture, const Vector2 &position, float scale, float alpha, bool flip_horizontal) {
     SDL_Renderer* renderer = get_renderer();
 
     SDL_FRect src_rect{ 0.0f, 0.0f, static_cast<float>(texture->width), static_cast<float>(texture->height) };
@@ -69,36 +69,11 @@ void Renderer::render_texture(Asset_Texture* texture, const Vector2 &position, f
     dst_rect.x -= offset.x * (dst_rect.w / src_rect.w);
     dst_rect.y -= offset.y * (dst_rect.h / src_rect.h);
 
-    SDL_RendererFlip flip = SDL_FLIP_NONE;
-
     if (flip_horizontal)
         // Flip src_rect
         src_recti.x = texture->width - src_recti.w - src_recti.x;
 
-    if (flip_vertical)
-        // Flip src_rect
-        src_recti.y = texture->height - src_recti.h - src_recti.y;
-
-    SDL_RenderCopyExF(renderer, rendering_obs ? texture->obs_texture : texture->window_texture, &src_recti, &dst_rect, 0.0f, NULL, flip_horizontal ? SDL_FLIP_HORIZONTAL : (flip_vertical ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE));
-
-    if (alpha != 1.0f)
-        SDL_SetTextureAlphaMod(current_texture, 255);
-}
-
-void Renderer::render_texture_rotated(Asset_Texture* texture, const Vector2 &position, float rotation, float scale, float alpha) {
-    SDL_Renderer* renderer = get_renderer();
-
-    SDL_FRect src_rect{ 0.0f, 0.0f, static_cast<float>(texture->width), static_cast<float>(texture->height) };
-
-    SDL_FRect dst_rect{ (position.x - camera_position.x) * camera_scale + camera_size.x * 0.5f, (position.y - camera_position.y) * camera_scale + camera_size.y * 0.5f,
-        texture->width * scale * camera_scale, texture->height * scale * camera_scale };
-
-    SDL_Texture* current_texture = rendering_obs ? texture->obs_texture : texture->window_texture;
-
-    if (alpha != 1.0f)
-        SDL_SetTextureAlphaMod(current_texture, 255 * alpha);
-
-    SDL_RenderCopyExF(renderer, rendering_obs ? texture->obs_texture : texture->window_texture, NULL, &dst_rect, rotation * 180.0f / M_PI, NULL, SDL_FLIP_NONE);
+    SDL_RenderTextureRotated(renderer, rendering_obs ? texture->obs_texture : texture->window_texture, &src_rect, &dst_rect, 0.0f, NULL, flip_horizontal ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 
     if (alpha != 1.0f)
         SDL_SetTextureAlphaMod(current_texture, 255);
