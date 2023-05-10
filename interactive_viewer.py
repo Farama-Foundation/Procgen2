@@ -8,7 +8,7 @@ import time
 width = 512
 height = 512
 
-env = CEnv("games/caveflyer/build/libCaveFlyer.so", options={ "width": width, "height": height })
+env = CEnv("build/games/caveflyer/libCaveFlyer.so", options={ "width": width, "height": height })
 
 print(env.observation_space)
 
