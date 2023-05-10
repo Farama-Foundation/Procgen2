@@ -6,7 +6,7 @@ The [coinrun](./games/coinrun/) environment should be roughly mimicked in terms 
 
 ## Compiling
 
-Coinrun depends only on [SDL2](https://www.libsdl.org/) and the [SDL2_image](https://github.com/libsdl-org/SDL_image) extension. Make sure these are installed. If on Linux, these can likely be found in your package manager.
+Coinrun depends only on [SDL3](https://www.libsdl.org/) and the [SDL3_image](https://github.com/libsdl-org/SDL_image) extension. Make sure these are installed. If on Linux, these can likely be found in your package manager.
 
 Coinrun can be compiled using [CMake](https://cmake.org/). From the directory containing the [CMakeLists.txt](./games/coinrun/CMakeLists.txt), create a directory called "build" and enter it:
 
@@ -81,8 +81,8 @@ Asset managers are per-asset-type, and asset managers for common asset types are
 
 ## Renderer
 
-Coinrun uses SDL2 software rendering, any implementation of ProcGen2 games should use SDL2's software rendering (GPU acceleration for such simple graphics is actually slower).
-Due to some intricacies with how SDL2 works, it is recommended to use the sprite rendering system included in coinrun, as defined in [renderer.h](./games/coinrun/renderer.h) and [renderer.cpp](./games/coinrun/renderer.cpp).
+Coinrun uses SDL3 software rendering, any implementation of ProcGen2 games should use SDL3's software rendering (GPU acceleration for such simple graphics is actually slower).
+Due to some intricacies with how SDL3 works, it is recommended to use the sprite rendering system included in coinrun, as defined in [renderer.h](./games/coinrun/renderer.h) and [renderer.cpp](./games/coinrun/renderer.cpp).
 The included renderer avoids overdraw, handles upscaling jitter, and switching between observation and viewer rendering.
 It defines a global "gr" (global renderer) that should be used for rendering:
 
