@@ -8,7 +8,6 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_VERBOSE_MAKEFILE OFF)
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../CMake")
 
 if(NOT CMAKE_BUILD_TYPE)
     message("CMAKE_BUILD_TYPE not set, setting it to Release")
@@ -16,10 +15,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 ############################################################################
-# Get SDL2
+# Get SDL
 
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
+find_package(SDL3 REQUIRED)
+find_package(SDL3_image REQUIRED)
 
 ############################################################################
 
@@ -40,7 +39,7 @@ set(SOURCES
 
 add_library(CoinRun SHARED ${SOURCES})
 
-target_link_libraries(CoinRun SDL2::Main SDL2::Image)
+target_link_libraries(CoinRun SDL3::SDL3 SDL3_image)
 
 set_target_properties(CoinRun PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 

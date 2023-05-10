@@ -182,8 +182,8 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     IMG_Init(IMG_INIT_PNG);
 
-    window_target = SDL_CreateRGBSurface(0, window_width, window_height, 32, rmask, gmask, bmask, amask);
-    obs_target = SDL_CreateRGBSurface(0, obs_width, obs_height, 32, rmask, gmask, bmask, amask);
+    window_target = SDL_CreateSurface(window_width, window_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
+    obs_target = SDL_CreateSurface(obs_width, obs_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
 
     window_renderer = SDL_CreateSoftwareRenderer(window_target);
     obs_renderer = SDL_CreateSoftwareRenderer(obs_target);
@@ -217,7 +217,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     tilemap->init();
 
-// Goal system setup
+    // Goal system setup
     goal = c.register_system<System_Goal>();
     Signature goal_signature;
     goal_signature.set(c.get_component_type<Component_Goal>()); // Operate only on goals
@@ -231,7 +231,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 
     agent->init();
 
-// Load backgrounds
+    // Load backgrounds
     background_textures.resize(background_names.size());
 
     for (int i = 0; i < background_names.size(); i++)
@@ -378,8 +378,8 @@ void cenv_close() {
     SDL_DestroyRenderer(window_renderer);
     SDL_DestroyRenderer(obs_renderer);
 
-    SDL_FreeSurface(window_target);
-    SDL_FreeSurface(obs_target);
+    SDL_DestroySurface(window_target);
+    SDL_DestroySurface(obs_target);
 }
 
 // Rendering

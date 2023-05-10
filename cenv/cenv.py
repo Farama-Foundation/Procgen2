@@ -1,5 +1,5 @@
-import gym
-from gym import Env
+import gymnasium as gym
+from gymnasium import Env
 import collections
 import copy
 import sys

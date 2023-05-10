@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 import numpy as np
 from cenv.cenv import CEnv
 import pygame
@@ -8,7 +8,7 @@ import time
 width = 512
 height = 512
 
-env = CEnv("games/bossfight/build/libBossFight.so", options={ "width": width, "height": height })
+env = CEnv("build/games/caveflyer/libCaveFlyer.so", options={ "width": width, "height": height })
 
 print(env.observation_space)
 

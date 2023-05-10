@@ -1,7 +1,7 @@
 #pragma once
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_image.h>
 
 #include "helpers.h"
 
@@ -30,3 +30,4 @@ public:
 };
 
 extern Renderer gr; // Global renderer
+

@@ -12,7 +12,7 @@ void Asset_Texture::load(const std::string &name) {
     window_texture = SDL_CreateTextureFromSurface(gr.window_renderer, surface);
     obs_texture = SDL_CreateTextureFromSurface(gr.obs_renderer, surface);
 
-    SDL_FreeSurface(surface);
+    SDL_DestroySurface(surface);
 }
 
 Asset_Texture::~Asset_Texture() {
