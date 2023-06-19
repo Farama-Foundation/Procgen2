@@ -247,7 +247,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
         background_textures[i].load(background_names[i]);
 
     // Load barriers
-    barrier_textures.resize(background_names.size());
+    barrier_textures.resize(barrier_names.size());
 
     for (int i = 0; i < barrier_names.size(); i++)
         barrier_textures[i].load(barrier_names[i]);
