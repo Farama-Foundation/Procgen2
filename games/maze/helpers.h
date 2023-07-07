@@ -3,6 +3,7 @@
 #include <cmath>
 #include <string>
 #include <algorithm>
+#include <cstdint>
 
 const float unit_to_pixels = 16.0f;
 const float pixels_to_unit = 1.0f / unit_to_pixels;
