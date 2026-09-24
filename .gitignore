@@ -1,0 +1,58 @@
+# =============================================================================
+# ProcGen2 — .gitignore
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# C++ build output
+# Build directories are created by CMake inside each game's folder and at the
+# repo root (e.g. games/coinrun/build/, games/climber/build/, build/).
+# ---------------------------------------------------------------------------
+build/
+games/*/build/
+
+# CMake-generated files that sometimes land outside the build directory
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt        # keep the source CMake files
+
+# Compiled shared libraries (if built in-tree rather than in build/)
+*.so
+*.dylib
+*.dll
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+
+# Byte-compiled / cached bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+.eggs/
+
+# Virtual environments (common names)
+.venv/
+venv/
+env/
+ENV/
+
+# Editable install markers placed by pip
+*.pth
+
+# ---------------------------------------------------------------------------
+# OS / editor noise
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
