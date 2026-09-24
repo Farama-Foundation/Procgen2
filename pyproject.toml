@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# ---------------------------------------------------------------------------
+# Project metadata
+# ---------------------------------------------------------------------------
+[project]
+name            = "procgen2"
+version         = "0.1.0"
+description     = "Gymnasium-compatible ProcGen2 environments (Farama Foundation)"
+readme          = "README.md"
+license         = { text = "MIT" }
+requires-python = ">=3.9"
+
+# Runtime Python dependencies only — the C++ shared libraries must be built
+# separately (see 'Building the games' below).
+dependencies = [
+    "gymnasium>=1.0.0",
+    "numpy>=1.21",
+]
+
+[project.optional-dependencies]
+# Extras for interactive rendering / debugging
+viewer = [
+    "opencv-python>=4.5",
+]
+# Full dev stack used in CI
+dev = [
+    "procgen2[viewer]",
+    "pytest>=8.0",
+]
+
+# ---------------------------------------------------------------------------
+# Package discovery
+# ---------------------------------------------------------------------------
+[tool.setuptools.packages.find]
+# Discovers 'procgen2' and 'cenv' automatically.
+where   = ["."]
+include = ["procgen2*", "cenv*"]
+exclude = ["games*", "assets*", "*.egg-info"]
+
+# ---------------------------------------------------------------------------
+# How to use
+# ---------------------------------------------------------------------------
+# PREREQUISITES (install once, outside the venv):
+#
+#   macOS:
+#     brew install cmake sdl3 sdl3_image
+#
+#   Ubuntu/Debian:
+#     sudo apt install cmake libsdl3-dev libsdl3-image-dev
+#
+# BUILD THE GAME LIBRARIES (run from the repo root):
+#
+#   # CoinRun (reference implementation — required)
+#   cmake -S games/coinrun -B games/coinrun/build -DCMAKE_BUILD_TYPE=Release
+#   cmake --build games/coinrun/build --parallel
+#
+#   # Other games follow the same pattern, e.g.:
+#   cmake -S games/chaser -B games/chaser/build -DCMAKE_BUILD_TYPE=Release
+#   cmake --build games/chaser/build --parallel
+#
+# INSTALL INTO A VENV:
+#
+#   python -m venv .venv
+#   source .venv/bin/activate          # Windows: .venv\Scripts\activate
+#   pip install -e ".[dev]"            # editable install with dev extras
+#
+# QUICK SMOKE TEST:
+#
+#   python test_coinrun.py
+#
+# GYMNASIUM CHECK:
+#
+#   python -c "
+#   import procgen2, gymnasium as gym
+#   from gymnasium.utils.env_checker import check_env
+#   env = gym.make('procgen2/CoinRun-v0', disable_env_checker=True)
+#   check_env(env.unwrapped, skip_render_check=True)
+#   print('All good!')
+#   "

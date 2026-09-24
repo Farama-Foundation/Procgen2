@@ -39,7 +39,7 @@ set(SOURCES
 
 add_library(CoinRun SHARED ${SOURCES})
 
-target_link_libraries(CoinRun SDL3::SDL3 SDL3_image)
+target_link_libraries(CoinRun SDL3::SDL3 SDL3_image::SDL3_image)
 
 set_target_properties(CoinRun PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
