@@ -2,7 +2,10 @@ import gymnasium as gym
 from gymnasium import Env
 import collections
 import copy
+import os
+import shutil
 import sys
+import tempfile
 import numpy as np
 import ctypes
 from ctypes import *
@@ -150,11 +153,25 @@ def _put_value_buffer(arr):
     return buffer
 
 class CEnv(Env):
-    metadata = {"render_modes": ["human", "single_rgb_array"]}
+    metadata = {"render_modes": ["human", "single_rgb_array"], "render_fps": 15}
 
     def __init__(self, lib_file_path: str, render_mode: Optional[str] = None, options: Optional[Dict[str, Any]] = None):
-        # Load library
-        self.lib = CDLL(lib_file_path)
+        # Each CEnv instance needs its own isolated copy of the shared library.
+        #
+        # On all major platforms dlopen/LoadLibrary de-duplicates by path: if
+        # two Python objects call CDLL("same/path") they receive the same handle
+        # and therefore share all C globals (game state, ECS, SDL surfaces, …).
+        # Copying the library to a unique temp file forces the OS to create a
+        # fresh address-space slot with independent globals, making SyncVectorEnv
+        # with N envs behave correctly without any changes to the C++ code.
+        lib_file_path = os.path.abspath(lib_file_path)
+        suffix = os.path.splitext(lib_file_path)[1]   # .dylib / .so / .dll
+        tmp_fd, self._tmp_lib_path = tempfile.mkstemp(suffix=suffix)
+        os.close(tmp_fd)
+        shutil.copy2(lib_file_path, self._tmp_lib_path)
+
+        # Load the isolated copy
+        self.lib = CDLL(self._tmp_lib_path)
 
         # Set up functions for Python
         self.lib.cenv_get_env_version.argtypes = []
@@ -208,68 +225,107 @@ class CEnv(Env):
         if ret != 0:
             raise(Exception("Non-zero error code!"))
 
-        self.observation_space = {}
+        # ---- Observation spaces ----
+        # make_data gives us the BOUNDS (low/high scalars or nvec).
+        # The actual observation SHAPE and DTYPE come from reset_data, which
+        # is fully initialised by cenv_make even before the first cenv_reset.
+        obs_spaces = {}
 
         for i in range(self.c_make_data.observation_spaces_size):
-            value_type = int(self.c_make_data.observation_spaces[i].value_type)
-            value_buffer_size = int(self.c_make_data.observation_spaces[i].value_buffer_size)
-            c_buffer_p = self.c_make_data.observation_spaces[i].value_buffer.b # Always reference as bytes for now
+            space_type   = int(self.c_make_data.observation_spaces[i].value_type)
+            bounds_size  = int(self.c_make_data.observation_spaces[i].value_buffer_size)
+            c_bounds_p   = self.c_make_data.observation_spaces[i].value_buffer.b
 
-            arr = _make_nd_array(c_buffer_p, (value_buffer_size,), dtype=CENV_VALUE_TYPE_TO_NUMPY_DTYPE[value_type])
+            bounds_arr = _make_nd_array(c_bounds_p, (bounds_size,),
+                                        dtype=CENV_VALUE_TYPE_TO_NUMPY_DTYPE[space_type])
 
-            space = None
+            key = self.c_make_data.observation_spaces[i].key.decode()
 
-            if value_type == CENV_VALUE_TYPE_MULTI_DISCRETE:
-                space = gym.spaces.MultiDiscrete(arr)
+            if space_type == CENV_VALUE_TYPE_MULTI_DISCRETE:
+                space = gym.spaces.MultiDiscrete(bounds_arr.astype(np.int64))
             else:
-                space = gym.spaces.Box(arr[:len(arr) // 2], arr[len(arr) // 2:])
+                # BOX: bounds_arr stores [low, high] scalars; real shape/dtype
+                # come from the pre-allocated observation slot in reset_data.
+                obs_dtype = CENV_VALUE_TYPE_TO_NUMPY_DTYPE[
+                    int(self.c_reset_data.observations[i].value_type)]
+                obs_size  = int(self.c_reset_data.observations[i].value_buffer_size)
 
-            self.observation_space[self.c_make_data.observation_spaces[i].key.decode()] = space
-        
-        self.action_space = {}
-        
+                low  = np.full((obs_size,), bounds_arr[0],             dtype=obs_dtype)
+                high = np.full((obs_size,), bounds_arr[bounds_size//2], dtype=obs_dtype)
+
+                space = gym.spaces.Box(low=low, high=high, dtype=obs_dtype)
+
+            obs_spaces[key] = space
+
+        self.observation_space = gym.spaces.Dict(obs_spaces)
+
+        # ---- Action spaces ----
+        act_spaces = {}
+
         for i in range(self.c_make_data.action_spaces_size):
-            value_type = int(self.c_make_data.action_spaces[i].value_type)
-            value_buffer_size = int(self.c_make_data.action_spaces[i].value_buffer_size)
-            c_buffer_p = self.c_make_data.action_spaces[i].value_buffer.b # Always reference as bytes for now
+            space_type  = int(self.c_make_data.action_spaces[i].value_type)
+            bounds_size = int(self.c_make_data.action_spaces[i].value_buffer_size)
+            c_bounds_p  = self.c_make_data.action_spaces[i].value_buffer.b
 
-            arr = _make_nd_array(c_buffer_p, (value_buffer_size,), dtype=CENV_VALUE_TYPE_TO_NUMPY_DTYPE[value_type])
+            bounds_arr = _make_nd_array(c_bounds_p, (bounds_size,),
+                                        dtype=CENV_VALUE_TYPE_TO_NUMPY_DTYPE[space_type])
 
-            space = None
+            key = self.c_make_data.action_spaces[i].key.decode()
 
-            if value_type == CENV_VALUE_TYPE_MULTI_DISCRETE:
-                space = gym.spaces.MultiDiscrete(arr)
+            if space_type == CENV_VALUE_TYPE_MULTI_DISCRETE:
+                space = gym.spaces.MultiDiscrete(bounds_arr.astype(np.int64))
             else:
-                space = gym.spaces.Box(arr[:len(arr) // 2], arr[len(arr) // 2:])
+                low  = bounds_arr[:bounds_size // 2]
+                high = bounds_arr[bounds_size // 2:]
+                space = gym.spaces.Box(low=low, high=high)
 
-            self.action_space[self.c_make_data.action_spaces[i].key.decode()] = space
+            act_spaces[key] = space
+
+        self.action_space = gym.spaces.Dict(act_spaces)
 
     def step(self, action: gym.core.ActType) -> Tuple[gym.core.ObsType, float, bool, bool, dict]:
         c_actions = None
         num_actions = 1
 
-        if type(action) is int:
-            c_action = c_int32(action)
+        if isinstance(action, (int, np.integer)):
+            # Single integer action — wrap as a one-element CEnv_Key_Value array
+            c_action = c_int32(int(action))
 
             c_value_buffer = CEnv_Value_Buffer()
             c_value_buffer.i = pointer(c_action)
 
-            c_actions = CEnv_Key_Value(b"action", c_int32(CENV_VALUE_TYPE_INT), c_int32(1), c_value_buffer)
-        elif type(action) is np.array:
+            c_actions = (CEnv_Key_Value * 1)()
+            c_actions[0].key = b"action"
+            c_actions[0].value_type = c_int32(CENV_VALUE_TYPE_INT)
+            c_actions[0].value_buffer_size = c_int32(1)
+            c_actions[0].value_buffer = c_value_buffer
+        elif isinstance(action, np.ndarray):
             action = np.ascontiguousarray(action)
 
-            c_value_buffer = CEnv_Value_Buffer()
-            c_value_buffer.b = addressof(action.data)
+            type_index = CENV_NUMPY_DTYPE_TO_VALUE_TYPE[action.dtype]
+            c_arr_p = ctypes.POINTER(CENV_VALUE_TYPE_TO_CTYPE[type_index])
 
-            c_actions = CEnv_Key_Value(b"action", c_int32(CENV_NUMPY_DTYPE_TO_VALUE_TYPE[action.dtype]), c_int32(len(action)), c_value_buffer)
-        elif type(action) is dict:
+            c_value_buffer = CEnv_Value_Buffer()
+            c_value_buffer.b = action.ctypes.data_as(ctypes.POINTER(c_byte))
+
+            c_actions = (CEnv_Key_Value * 1)()
+            c_actions[0].key = b"action"
+            c_actions[0].value_type = c_int32(type_index)
+            c_actions[0].value_buffer_size = c_int32(len(action))
+            c_actions[0].value_buffer = c_value_buffer
+        elif isinstance(action, dict):
             num_actions = len(action)
-            
+
             c_actions = (CEnv_Key_Value * num_actions)()
 
             i = 0
 
             for k, v in action.items():
+                v = np.ascontiguousarray(v)
+                # int64 is not part of the cenv protocol; downcast to int32
+                # (MultiDiscrete.sample() returns int64 on most platforms)
+                if v.dtype == np.int64:
+                    v = v.astype(np.int32)
                 c_actions[i].key = bytes(k, encoding="ascii")
                 c_actions[i].value_type = c_int32(CENV_NUMPY_DTYPE_TO_VALUE_TYPE[v.dtype])
                 c_actions[i].value_buffer_size = c_int32(len(v))
@@ -278,7 +334,7 @@ class CEnv(Env):
                 i += 1
 
         else:
-            raise(Exception("Unrecognized action type! Supported are: int, np.array, Dict[np.array]"))
+            raise(Exception("Unrecognized action type! Supported are: int, np.integer, np.ndarray, Dict[np.ndarray]"))
             
         ret = self.lib.cenv_step(c_actions, c_int32(num_actions))
 
@@ -314,18 +370,27 @@ class CEnv(Env):
 
         return (observation, reward, terminated, truncated, info)
 
-    def reset(self, options: Optional[List[Any]] = None) -> Tuple[gym.core.ObsType, dict]:
+    def reset(self, *, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None) -> Tuple[gym.core.ObsType, dict]:
+        super().reset(seed=seed)
+
         c_options = None
         num_options = 0
 
-        if options != None:
-            num_options = len(options)
+        # Merge seed into options dict so the C side can consume it
+        merged: Dict[str, Any] = {}
+        if seed is not None:
+            merged["seed"] = seed
+        if options is not None:
+            merged.update(options)
+
+        if merged:
+            num_options = len(merged)
 
             c_options = (CEnv_Option * num_options)()
 
             i = 0
 
-            for k, v in options.items():
+            for k, v in merged.items():
                 c_options[i].name = bytes(k, encoding="ascii")
 
                 value_type = CENV_PYTHON_TYPE_TO_VALUE_TYPE[type(v)]
@@ -378,3 +443,8 @@ class CEnv(Env):
 
     def close(self):
         self.lib.cenv_close()
+        # Remove the per-instance temp copy of the shared library.
+        try:
+            os.unlink(self._tmp_lib_path)
+        except OSError:
+            pass
