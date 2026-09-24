@@ -17,8 +17,15 @@ endif()
 ############################################################################
 # Get SDL
 
+
+############################################################################
+# Platform / architecture configuration (ARM64, universal binary, Linux ARM)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ProcGen2Platform.cmake" OPTIONAL)
+
+############################################################################
+# SDL dependencies
 find_package(SDL3 REQUIRED)
-find_package(SDL3_image REQUIRED)
+find_package(SDL3_image::SDL3_image REQUIRED)
 
 ############################################################################
 
@@ -41,7 +48,7 @@ set(SOURCES
 
 add_library(Jumper SHARED ${SOURCES})
 
-target_link_libraries(Jumper SDL3::SDL3 SDL3_image)
+target_link_libraries(Jumper SDL3::SDL3 SDL3_image::SDL3_image)
 
 set_target_properties(Jumper PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
