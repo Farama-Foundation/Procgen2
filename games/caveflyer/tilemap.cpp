@@ -60,7 +60,7 @@ void System_Tilemap::spawn_target(int cell) {
 
     c.add_component(e, Component_Transform{ .position{ pos } });
     c.add_component(e, Component_Sprite{ .position{ -0.4f, -0.4f }, .scale=0.8f, .z = 1.0f, .texture = texture });
-    c.add_component(e, Component_Hazard{ .destroyable = true });
+    c.add_component(e, Component_Hazard{ .destroyable = true, .health = 5 });
     c.add_component(e, Component_Collision{ .bounds{ -0.25f, -0.25f, 0.5f, 0.5f }});
 }
 

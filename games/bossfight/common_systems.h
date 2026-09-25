@@ -95,6 +95,9 @@ public:
 
     void init(); // Needs to load sprites
 
+    // +1 consumed by cenv_step when a damage-round is finished this update
+    int pending_reward = 0;
+
     // Return boss alive status (false if all phases exhausted)
     bool update(float dt, const std::shared_ptr<System_Hazard> &hazard, std::mt19937 &rng);
     void render();

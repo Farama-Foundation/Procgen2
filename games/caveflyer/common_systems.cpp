@@ -239,8 +239,8 @@ std::tuple<bool, bool, int> System_Agent::update(float dt, const std::shared_ptr
 
                 // If collide with hazard
                 for (Entity h : hazard->get_entities()) {
-                    const Component_Hazard &hazard = c.get_component<Component_Hazard>(h);
-                    
+                    Component_Hazard &hazard_comp = c.get_component<Component_Hazard>(h);
+
                     const Component_Transform &hazard_transform = c.get_component<Component_Transform>(h);
                     const Component_Collision &hazard_collision = c.get_component<Component_Collision>(h);
 
@@ -251,11 +251,14 @@ std::tuple<bool, bool, int> System_Agent::update(float dt, const std::shared_ptr
                         bullet.vel = { 0.0f, 0.0f };
                         bullet.frame = 1.0f;
 
-                        if (hazard.destroyable) {
-                            // Destroy the hazard
-                            to_destroy.push_back(h);
-
-                            targets_destroyed++;
+                        // Original CaveFlyer: TARGET has health 5; each hit
+                        // subtracts 1 and only the last hit awards +3 and removes it.
+                        if (hazard_comp.destroyable) {
+                            hazard_comp.health -= 1;
+                            if (hazard_comp.health <= 0) {
+                                to_destroy.push_back(h);
+                                targets_destroyed++;
+                            }
                         }
 
                         break;
