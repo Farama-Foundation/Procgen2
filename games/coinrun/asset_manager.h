@@ -34,4 +34,9 @@ public:
 
         assets.erase(assets.find(name));
     }
+
+    // Destroy all cached assets (e.g. before SDL renderer teardown).
+    void clear() {
+        assets.clear();
+    }
 };
