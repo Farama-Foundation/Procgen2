@@ -208,6 +208,17 @@ class _DodgeballEnv(_ProcGen2Env):
     _LIB_NAME = "Dodgeball"
 
 
+class _HeistEnv(_ProcGen2Env):
+    """
+    Heist — collect colored keys, unlock matching doors, steal the gem.
+
+    Observation space : Dict{ "screen": Box(0, 255, (12288,), uint8) }  (64×64×3 flat)
+    Action space      : Dict{ "action": MultiDiscrete([15]) }
+    """
+    _GAME_DIR = "heist"
+    _LIB_NAME = "Heist"
+
+
 # ---------------------------------------------------------------------------
 # Register all environments with Gymnasium
 # ---------------------------------------------------------------------------
@@ -263,5 +274,11 @@ gym.register(
 gym.register(
     id="procgen2/Dodgeball-v0",
     entry_point="procgen2:_DodgeballEnv",
+    max_episode_steps=1000,
+)
+
+gym.register(
+    id="procgen2/Heist-v0",
+    entry_point="procgen2:_HeistEnv",
     max_episode_steps=1000,
 )

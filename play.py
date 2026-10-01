@@ -46,6 +46,7 @@ GAMES = {
     "caveflyer": ("procgen2/CaveFlyer-v0", "shooter"),
     "starpilot": ("procgen2/StarPilot-v0", "starpilot"),
     "dodgeball": ("procgen2/Dodgeball-v0", "shooter"),
+    "heist":     ("procgen2/Heist-v0",     "heist"),
 }
 
 SCHEME_HELP = {
@@ -53,6 +54,7 @@ SCHEME_HELP = {
     "grid":     "Arrow keys move one cell (diagonals ignored on Chaser)",
     "shooter":  "Space = fire",
     "starpilot": "Space = fire right    Z / Left-Shift = fire left",
+    "heist":    "Collect matching keys to open locks, then reach the yellow gem",
 }
 
 
