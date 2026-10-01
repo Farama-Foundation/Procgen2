@@ -252,6 +252,17 @@ class _NinjaEnv(_ProcGen2Env):
     _LIB_NAME = "Ninja"
 
 
+class _PlunderEnv(_ProcGen2Env):
+    """
+    Plunder — sink the marked target ships, avoid the others, fill the quota.
+
+    Observation space : Dict{ "screen": Box(0, 255, (12288,), uint8) }  (64×64×3 flat)
+    Action space      : Dict{ "action": MultiDiscrete([15]) }
+    """
+    _GAME_DIR = "plunder"
+    _LIB_NAME = "Plunder"
+
+
 # ---------------------------------------------------------------------------
 # Register all environments with Gymnasium
 # ---------------------------------------------------------------------------
@@ -332,4 +343,10 @@ gym.register(
     id="procgen2/Ninja-v0",
     entry_point="procgen2:_NinjaEnv",
     max_episode_steps=1000,
+)
+
+gym.register(
+    id="procgen2/Plunder-v0",
+    entry_point="procgen2:_PlunderEnv",
+    max_episode_steps=4000,
 )

@@ -50,6 +50,7 @@ GAMES = {
     "leaper":    ("procgen2/Leaper-v0",    "leaper"),
     "miner":     ("procgen2/Miner-v0",     "miner"),
     "ninja":     ("procgen2/Ninja-v0",     "ninja"),
+    "plunder":   ("procgen2/Plunder-v0",   "shooter"),
 }
 
 SCHEME_HELP = {
