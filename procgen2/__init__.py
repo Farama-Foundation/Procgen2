@@ -230,6 +230,17 @@ class _LeaperEnv(_ProcGen2Env):
     _LIB_NAME = "Leaper"
 
 
+class _MinerEnv(_ProcGen2Env):
+    """
+    Miner — dig dirt, collect diamonds, avoid falling boulders, reach the exit.
+
+    Observation space : Dict{ "screen": Box(0, 255, (12288,), uint8) }  (64×64×3 flat)
+    Action space      : Dict{ "action": MultiDiscrete([15]) }
+    """
+    _GAME_DIR = "miner"
+    _LIB_NAME = "Miner"
+
+
 # ---------------------------------------------------------------------------
 # Register all environments with Gymnasium
 # ---------------------------------------------------------------------------
@@ -298,4 +309,10 @@ gym.register(
     id="procgen2/Leaper-v0",
     entry_point="procgen2:_LeaperEnv",
     max_episode_steps=500,
+)
+
+gym.register(
+    id="procgen2/Miner-v0",
+    entry_point="procgen2:_MinerEnv",
+    max_episode_steps=1000,
 )
