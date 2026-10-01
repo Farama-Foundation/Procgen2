@@ -49,6 +49,7 @@ GAMES = {
     "heist":     ("procgen2/Heist-v0",     "heist"),
     "leaper":    ("procgen2/Leaper-v0",    "leaper"),
     "miner":     ("procgen2/Miner-v0",     "miner"),
+    "ninja":     ("procgen2/Ninja-v0",     "ninja"),
 }
 
 SCHEME_HELP = {
@@ -59,6 +60,7 @@ SCHEME_HELP = {
     "heist":    "Collect matching keys to open locks, then reach the yellow gem",
     "leaper":   "Hop (one hop at a time) across cars and onto logs    reach the finish",
     "miner":    "Cardinals only    dig dirt    collect diamonds    don't get crushed    then the exit",
+    "ninja":    "Hold Up / Space to charge a jump, release to leap    Z / F = throw a star    bombs kill, stars destroy bombs",
 }
 
 
@@ -175,7 +177,7 @@ def main():
         if keys[pygame.K_UP]    or keys[pygame.K_w]: dy -= 1
         if keys[pygame.K_DOWN]  or keys[pygame.K_s]: dy += 1
 
-        if scheme == "platform" and keys[pygame.K_SPACE]:
+        if scheme in ("platform", "ninja") and keys[pygame.K_SPACE]:
             dy = -1
         elif scheme == "shooter" and keys[pygame.K_SPACE]:
             fire = 1
@@ -184,6 +186,9 @@ def main():
                 fire = 1
             if keys[pygame.K_z] or keys[pygame.K_LSHIFT]:
                 fire = 2
+
+        if scheme == "ninja" and (keys[pygame.K_z] or keys[pygame.K_f]):
+            fire = 1
 
         action = {"action": np.array([build_action(dx, dy, fire)], dtype=np.int32)}
         obs, reward, terminated, truncated, info = env.step(action)
