@@ -197,6 +197,17 @@ class _StarPilotEnv(_ProcGen2Env):
     _LIB_NAME = "StarPilot"
 
 
+class _DodgeballEnv(_ProcGen2Env):
+    """
+    Dodgeball — throw balls at enemies, then exit through the door.
+
+    Observation space : Dict{ "screen": Box(0, 255, (12288,), uint8) }  (64×64×3 flat)
+    Action space      : Dict{ "action": MultiDiscrete([15]) }
+    """
+    _GAME_DIR = "dodgeball"
+    _LIB_NAME = "Dodgeball"
+
+
 # ---------------------------------------------------------------------------
 # Register all environments with Gymnasium
 # ---------------------------------------------------------------------------
@@ -246,5 +257,11 @@ gym.register(
 gym.register(
     id="procgen2/StarPilot-v0",
     entry_point="procgen2:_StarPilotEnv",
+    max_episode_steps=1000,
+)
+
+gym.register(
+    id="procgen2/Dodgeball-v0",
+    entry_point="procgen2:_DodgeballEnv",
     max_episode_steps=1000,
 )

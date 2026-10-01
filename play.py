@@ -45,6 +45,7 @@ GAMES = {
     "bossfight": ("procgen2/BossFight-v0", "shooter"),
     "caveflyer": ("procgen2/CaveFlyer-v0", "shooter"),
     "starpilot": ("procgen2/StarPilot-v0", "starpilot"),
+    "dodgeball": ("procgen2/Dodgeball-v0", "shooter"),
 }
 
 SCHEME_HELP = {
