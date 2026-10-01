@@ -219,6 +219,17 @@ class _HeistEnv(_ProcGen2Env):
     _LIB_NAME = "Heist"
 
 
+class _LeaperEnv(_ProcGen2Env):
+    """
+    Leaper — Frogger-style hops across traffic and logs to the finish line.
+
+    Observation space : Dict{ "screen": Box(0, 255, (12288,), uint8) }  (64×64×3 flat)
+    Action space      : Dict{ "action": MultiDiscrete([15]) }
+    """
+    _GAME_DIR = "leaper"
+    _LIB_NAME = "Leaper"
+
+
 # ---------------------------------------------------------------------------
 # Register all environments with Gymnasium
 # ---------------------------------------------------------------------------
@@ -281,4 +292,10 @@ gym.register(
     id="procgen2/Heist-v0",
     entry_point="procgen2:_HeistEnv",
     max_episode_steps=1000,
+)
+
+gym.register(
+    id="procgen2/Leaper-v0",
+    entry_point="procgen2:_LeaperEnv",
+    max_episode_steps=500,
 )

@@ -47,6 +47,7 @@ GAMES = {
     "starpilot": ("procgen2/StarPilot-v0", "starpilot"),
     "dodgeball": ("procgen2/Dodgeball-v0", "shooter"),
     "heist":     ("procgen2/Heist-v0",     "heist"),
+    "leaper":    ("procgen2/Leaper-v0",    "leaper"),
 }
 
 SCHEME_HELP = {
@@ -55,6 +56,7 @@ SCHEME_HELP = {
     "shooter":  "Space = fire",
     "starpilot": "Space = fire right    Z / Left-Shift = fire left",
     "heist":    "Collect matching keys to open locks, then reach the yellow gem",
+    "leaper":   "Hop (one hop at a time) across cars and onto logs    reach the finish",
 }
 
 
