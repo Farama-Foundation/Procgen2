@@ -46,6 +46,7 @@ GAMES = {
     "caveflyer": ("procgen2/CaveFlyer-v0", "shooter"),
     "starpilot": ("procgen2/StarPilot-v0", "starpilot"),
     "fruitbot":  ("procgen2/FruitBot-v0",  "fruitbot"),
+    "bigfish":   ("procgen2/BigFish-v0",   "swim"),
 }
 
 SCHEME_HELP = {
@@ -54,6 +55,7 @@ SCHEME_HELP = {
     "shooter":  "Space = fire",
     "starpilot": "Space = fire right    Z / Left-Shift = fire left",
     "fruitbot": "Left/Right to steer (you always drift up)    Space = throw a key",
+    "swim":     "8-way swim    eat smaller fish (+1, grow)    avoid larger fish    eat 30 to win",
 }
 
 

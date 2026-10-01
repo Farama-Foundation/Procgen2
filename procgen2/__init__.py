@@ -194,6 +194,17 @@ class _FruitBotEnv(_ProcGen2Env):
     _LIB_NAME = "FruitBot"
 
 
+class _BigFishEnv(_ProcGen2Env):
+    """
+    BigFish — eat smaller fish to grow; die if you touch a larger one. Eat 30 to win.
+
+    Observation space : Dict{ "screen": Box(0, 255, (12288,), uint8) }  (64×64×3 flat)
+    Action space      : Dict{ "action": MultiDiscrete([15]) }
+    """
+    _GAME_DIR = "bigfish"
+    _LIB_NAME = "BigFish"
+
+
 # ---------------------------------------------------------------------------
 # Register all environments with Gymnasium
 # ---------------------------------------------------------------------------
@@ -244,4 +255,10 @@ gym.register(
     id="procgen2/FruitBot-v0",
     entry_point="procgen2:_FruitBotEnv",
     max_episode_steps=1000,
+)
+
+gym.register(
+    id="procgen2/BigFish-v0",
+    entry_point="procgen2:_BigFishEnv",
+    max_episode_steps=6000,
 )
