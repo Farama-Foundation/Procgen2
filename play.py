@@ -51,6 +51,8 @@ GAMES = {
     "miner":     ("procgen2/Miner-v0",     "miner"),
     "ninja":     ("procgen2/Ninja-v0",     "ninja"),
     "plunder":   ("procgen2/Plunder-v0",   "shooter"),
+    "fruitbot":  ("procgen2/FruitBot-v0",  "fruitbot"),
+    "bigfish":   ("procgen2/BigFish-v0",   "shooter"),
 }
 
 SCHEME_HELP = {
@@ -62,6 +64,7 @@ SCHEME_HELP = {
     "leaper":   "Hop (one hop at a time) across cars and onto logs    reach the finish",
     "miner":    "Cardinals only    dig dirt    collect diamonds    don't get crushed    then the exit",
     "ninja":    "Hold Up / Space to charge a jump, release to leap    Z / F = throw a star    bombs kill, stars destroy bombs",
+    "fruitbot": "Left/Right to steer (you always drift up)    Space = throw a key",
 }
 
 
@@ -121,6 +124,11 @@ def parse_args():
     )
     parser.add_argument("--list", action="store_true", help="Print available games and exit.")
     parser.add_argument("--seed", type=int, default=None, help="Reset seed (default: time-based).")
+    parser.add_argument(
+        "--mode",
+        default="hard",
+        help="distribution_mode: easy, hard, extreme, memory, or exploration (default: hard).",
+    )
     parser.add_argument("--scale", type=int, default=768, help="Window size in pixels (default: 768).")
     return parser.parse_args()
 
@@ -136,7 +144,12 @@ def main():
     key, (env_id, scheme) = resolve_game(args.game)
     build_action = _starpilot_action if scheme == "starpilot" else _standard_action
 
-    env = gym.make(env_id, render_mode="rgb_array", disable_env_checker=True)
+    env = gym.make(
+        env_id,
+        render_mode="rgb_array",
+        disable_env_checker=True,
+        distribution_mode=args.mode,
+    )
     seed = args.seed if args.seed is not None else (int(time.time()) & 0xFFFF)
     obs, _ = env.reset(seed=seed)
 
@@ -180,7 +193,7 @@ def main():
 
         if scheme in ("platform", "ninja") and keys[pygame.K_SPACE]:
             dy = -1
-        elif scheme == "shooter" and keys[pygame.K_SPACE]:
+        elif scheme in ("shooter", "fruitbot") and keys[pygame.K_SPACE]:
             fire = 1
         elif scheme == "starpilot":
             if keys[pygame.K_SPACE]:

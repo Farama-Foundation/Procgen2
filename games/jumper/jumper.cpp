@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cmath>
 #include <iostream>
@@ -7,6 +8,7 @@
 #include "common_systems.h"
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 const bool show_log = false;
 
 // ---------------------- CEnv Interface ----------------------
@@ -56,6 +58,24 @@ std::shared_ptr<System_Particles> particles;
 
 System_Tilemap::Config tilemap_config;
 int current_map_theme = 0;
+int episode_timeout = 1000;
+int curr_step = 0;
+
+static void apply_distribution_mode() {
+    if (distribution_mode == DIST_MEMORY) {
+        tilemap_config.mode = memory_mode;
+        episode_timeout = 2000;
+        game_zoom = 0.3f;
+    } else if (distribution_mode == DIST_EASY) {
+        tilemap_config.mode = easy_mode;
+        episode_timeout = 1000;
+        game_zoom = 0.3f * 16.0f / 12.0f;
+    } else {
+        tilemap_config.mode = hard_mode;
+        episode_timeout = 1000;
+        game_zoom = 0.3f;
+    }
+}
 
 // Big list of different background images
 std::vector<std::string> background_names {
@@ -155,6 +175,10 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
             assert(options[i].value_type == CENV_VALUE_TYPE_INT);
 
             window_height = options[i].value.i;
+        }
+        else if (name == "distribution_mode") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+            distribution_mode = options[i].value.i;
         }
     }
     
@@ -306,7 +330,10 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     compass_needle.load("assets/custom/jumper_compass_needle.png");
     compass_bar.load("assets/custom/jumper_compass_bar.png");
 
+    apply_distribution_mode();
+
     // Reset spawns entities while generating map
+    apply_distribution_mode();
     reset();
 
     return 0; // No error
@@ -322,8 +349,13 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
 
             rng.seed(options[i].value.i);
         }
+        else if (name == "distribution_mode") {
+            if (options[i].value_type == CENV_VALUE_TYPE_INT)
+                distribution_mode = options[i].value.i;
+        }
     }
 
+    apply_distribution_mode();
     reset();
 
     render_game(true);
@@ -374,6 +406,10 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
 
         if (step_data.terminated)
             break;
+    }
+
+    if (++curr_step >= episode_timeout) {
+        step_data.truncated = true;
     }
 
     // Render and grab pixels
@@ -507,7 +543,8 @@ void render_game(bool is_obs) {
     sprite_render->render(positive_z);
     agent->render();
 
-    // Draw compass
+    // Draw compass (hidden in memory mode, matching original)
+    if (tilemap_config.mode != memory_mode) {
     const float compass_size = 200.0f;
     const Vector2 compass_offset{ -32.0f, 32.0f };
 
@@ -544,12 +581,14 @@ void render_game(bool is_obs) {
 
         SDL_RenderTextureRotated(gr.get_renderer(), is_obs ? compass_bar.obs_texture : compass_bar.window_texture, NULL, &dst_rect, 0.0f, NULL, SDL_FLIP_NONE);
     }
+    }
 
     SDL_RenderPresent(gr.get_renderer());
 }
 
 void reset() {
     c.clear_entities();
+    curr_step = 0;
 
     tilemap->regenerate(rng, tilemap_config);
 

@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cassert>
 #include <cmath>
@@ -17,6 +18,7 @@
 #endif
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 
 cenv_make_data make_data;
 cenv_reset_data reset_data;
@@ -37,10 +39,10 @@ int window_width  = 512;
 int window_height = 512;
 
 // Hard mode (original dodgeball.cpp)
-const float WORLD_W = 20.0f;
-const float WORLD_H = 20.0f;
+float WORLD_W = 20.0f;
+float WORLD_H = 20.0f;
 const float MIXRATE  = 0.5f;
-const float MAXSPEED = 0.5f;
+float MAXSPEED = 0.5f;
 const float DECAY    = 0.9f;
 
 const float ENEMY_VEL    = 0.05f;
@@ -53,15 +55,15 @@ const int ENEMY_FIRE_DELAY = 50;
 const int PLAYER_FIRE_CD   = 7;
 const int BALL_EXPIRE      = 50;
 const int TIMEOUT          = 1000;
-const int NUM_ITERATIONS   = 4;
-const int MAX_EXTRA_ENEMIES = 3;
+int NUM_ITERATIONS   = 4;
+int MAX_EXTRA_ENEMIES = 3;
 
-const float THICKNESS = 0.3f * 1.5f;   // 0.45
-const float ENEMY_R   = 0.5f * 1.5f;   // 0.75
-const float BALL_R    = 0.25f * 1.5f;  // 0.375
-const float BALL_VSCALE = 0.25f * 1.5f;
-const float PLAYER_R  = 0.75f;
-const float EXIT_R    = 0.75f;
+float THICKNESS = 0.3f * 1.5f;
+float ENEMY_R   = 0.5f * 1.5f;
+float BALL_R    = 0.25f * 1.5f;
+float BALL_VSCALE = 0.25f * 1.5f;
+float PLAYER_R  = 0.75f;
+float EXIT_R    = 0.75f;
 
 enum ObjType {
     OBJ_DEAD = 0,
@@ -197,6 +199,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
         if (name == "seed")   seed = (unsigned int)options[i].value.i;
         if (name == "width")  window_width  = options[i].value.i;
         if (name == "height") window_height = options[i].value.i;
+        if (name == "distribution_mode") distribution_mode = options[i].value.i;
     }
 
     make_data.observation_spaces_size = 1;
@@ -375,6 +378,42 @@ static void spawn_in_open(Ent& e, bool vs_player) {
 }
 
 void reset_game() {
+    float thickness = 0.3f;
+    float enemy_r = 0.5f;
+    float exit_r = 0.75f;
+    BALL_R = 0.25f;
+    BALL_VSCALE = 0.25f;
+    MAX_EXTRA_ENEMIES = 3;
+    WORLD_W = WORLD_H = (distribution_mode == DIST_MEMORY) ? 40.f : 20.f;
+
+    if (distribution_mode == DIST_EASY) {
+        NUM_ITERATIONS = 2;
+        thickness *= 2.f;
+        enemy_r *= 2.f;
+        BALL_R *= 2.f;
+        BALL_VSCALE *= 2.f;
+        MAXSPEED = 0.75f;
+        PLAYER_R = 1.f;
+        exit_r *= 2.f;
+    } else if (distribution_mode == DIST_HARD || distribution_mode == DIST_MEMORY) {
+        NUM_ITERATIONS = (distribution_mode == DIST_MEMORY) ? 16 : 4;
+        thickness *= 1.5f;
+        enemy_r *= 1.5f;
+        BALL_R *= 1.5f;
+        BALL_VSCALE *= 1.5f;
+        MAXSPEED = 0.5f;
+        PLAYER_R = 0.75f;
+        if (distribution_mode == DIST_MEMORY)
+            MAX_EXTRA_ENEMIES = 16;
+    } else { // extreme
+        NUM_ITERATIONS = 8;
+        MAXSPEED = 0.25f;
+        PLAYER_R = 0.5f;
+    }
+    THICKNESS = thickness;
+    ENEMY_R = enemy_r;
+    EXIT_R = exit_r;
+
     entities.clear();
     rooms.clear();
     cur_time = 0;
@@ -657,6 +696,7 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
     for (int i = 0; i < options_size; i++) {
         std::string name(options[i].name);
         if (name == "seed") rng.seed((unsigned int)options[i].value.i);
+        else if (name == "distribution_mode" && options[i].value_type == CENV_VALUE_TYPE_INT) distribution_mode = options[i].value.i;
     }
     reset_game();
     render_game(true);
@@ -690,9 +730,10 @@ void render_game(bool is_obs) {
     SDL_SetRenderDrawColor(gr.get_renderer(), 0, 0, 0, 255);
     SDL_RenderClear(gr.get_renderer());
 
-    float pix  = (float)height / WORLD_H;
-    float cam_x = WORLD_W * 0.5f;
-    float cam_y = WORLD_H * 0.5f;
+    float view = (distribution_mode == DIST_MEMORY) ? 16.f : WORLD_H;
+    float pix  = (float)height / view;
+    float cam_x = (distribution_mode == DIST_MEMORY) ? player_x : WORLD_W * 0.5f;
+    float cam_y = (distribution_mode == DIST_MEMORY) ? player_y : WORLD_H * 0.5f;
 
     if (!bg_textures.empty()) {
         Asset_Texture* bg = &bg_textures[bg_index];

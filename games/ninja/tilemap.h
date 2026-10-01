@@ -31,7 +31,9 @@ static const std::vector<std::string> wall_themes = {
 
 class System_Tilemap : public System {
 public:
-    struct Config {};
+    struct Config {
+        bool easy_mode = false;
+    };
 
 private:
     int map_width = 0, map_height = 0;

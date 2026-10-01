@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cassert>
 #include <cmath>
@@ -18,6 +19,7 @@
 #endif
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 
 cenv_make_data make_data;
 cenv_reset_data reset_data;
@@ -44,7 +46,7 @@ const float DECAY = 0.9f;
 const float COMPLETION_BONUS = 10.f;
 const float POSITIVE_REWARD = 1.f;
 const int TIMEOUT = 4000;
-const float R_SCALE = 1.0f;
+float R_SCALE = 1.0f;
 const float SPAWN_PROB = 0.06f;
 const int NUM_LANES = 5;
 const int NUM_SHIP_TYPES = 6;
@@ -161,6 +163,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
         if (name == "seed")   seed = (unsigned int)options[i].value.i;
         if (name == "width")  window_width  = options[i].value.i;
         if (name == "height") window_height = options[i].value.i;
+        if (name == "distribution_mode") distribution_mode = options[i].value.i;
     }
 
     make_data.observation_spaces_size = 1;
@@ -270,6 +273,7 @@ void reset_game() {
     juice_left = 1.f;
     targets_hit = 0;
     target_quota = TARGET_QUOTA;
+    R_SCALE = (distribution_mode == DIST_EASY) ? 1.5f : 1.0f;
     bg_index = randn((int)bg_textures.size());
 
     image_permutation.resize(NUM_SHIP_TYPES);
@@ -317,7 +321,7 @@ void reset_game() {
     legend.rotation = (float)M_PI / 2.f;
     entities.push_back(legend);
 
-    int num_panels = randn(4);
+    int num_panels = (distribution_mode == DIST_EASY) ? 0 : randn(4);
     float panel_width = 1.2f;
     for (int i = 0; i < num_panels; i++) {
         Ent p;
@@ -340,6 +344,7 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
     for (int i = 0; i < options_size; i++) {
         std::string name(options[i].name);
         if (name == "seed") rng.seed((unsigned int)options[i].value.i);
+        else if (name == "distribution_mode" && options[i].value_type == CENV_VALUE_TYPE_INT) distribution_mode = options[i].value.i;
     }
     reset_game();
     render_game(true);

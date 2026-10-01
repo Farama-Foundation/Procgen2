@@ -1,0 +1,36 @@
+cmake_minimum_required(VERSION 3.13)
+
+project(BigFish)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_VERBOSE_MAKEFILE OFF)
+
+if(NOT CMAKE_BUILD_TYPE)
+    message("CMAKE_BUILD_TYPE not set, defaulting to Release")
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ProcGen2Platform.cmake" OPTIONAL)
+
+find_package(SDL3 REQUIRED)
+find_package(SDL3_image REQUIRED)
+
+include_directories(".")
+include_directories("${PROJECT_SOURCE_DIR}")
+
+set(SOURCE_PATH "${PROJECT_SOURCE_DIR}")
+set(SOURCES
+    "${SOURCE_PATH}/bigfish.cpp"
+    "${SOURCE_PATH}/ecs.cpp"
+    "${SOURCE_PATH}/helpers.cpp"
+    "${SOURCE_PATH}/renderer.cpp"
+    "${SOURCE_PATH}/common_assets.cpp"
+)
+
+add_library(BigFish SHARED ${SOURCES})
+
+target_link_libraries(BigFish SDL3::SDL3 SDL3_image::SDL3_image)
+
+set_target_properties(BigFish PROPERTIES POSITION_INDEPENDENT_CODE TRUE)

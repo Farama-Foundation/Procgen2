@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cmath>
 #include <ctime>
@@ -9,6 +10,7 @@
 #include "common_systems.h"
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 
 cenv_make_data make_data;
 cenv_reset_data reset_data;
@@ -27,6 +29,17 @@ int window_width = 512;
 int window_height = 512;
 
 float game_zoom = 0.25f; // visibility 16 tiles in the 64px observation
+float g_ninja_max_jump = 1.5f;
+float g_ninja_jump_charge_inc = 0.25f;
+System_Tilemap::Config tilemap_config;
+
+static void apply_distribution_mode() {
+    bool easy = (distribution_mode == DIST_EASY);
+    tilemap_config.easy_mode = easy;
+    g_ninja_max_jump = easy ? 1.25f : 1.5f;
+    g_ninja_jump_charge_inc = easy ? 1.0f : 0.25f;
+    game_zoom = easy ? (0.25f * 16.0f / 10.0f) : 0.25f;
+}
 
 std::mt19937 rng;
 
@@ -131,6 +144,9 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
         } else if (name == "height") {
             assert(options[i].value_type == CENV_VALUE_TYPE_INT);
             window_height = options[i].value.i;
+        } else if (name == "distribution_mode") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+            distribution_mode = options[i].value.i;
         }
     }
 
@@ -259,6 +275,10 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
         if (name == "seed") {
             assert(options[i].value_type == CENV_VALUE_TYPE_INT);
             rng.seed(options[i].value.i);
+        }
+        else if (name == "distribution_mode") {
+            if (options[i].value_type == CENV_VALUE_TYPE_INT)
+                distribution_mode = options[i].value.i;
         }
     }
 
@@ -416,7 +436,7 @@ void render_game(bool is_obs) {
     // Jump-charge bar (original: green, left side, height 3 * charge in visibility units)
     float charge = agent->jump_charge();
     if (charge > 0.0f) {
-        const float visibility = 16.0f;
+        const float visibility = tilemap_config.easy_mode ? 10.0f : 16.0f;
         float tile_px = static_cast<float>(width) / visibility;
         float bar_h = 3.0f * charge * tile_px;
         SDL_FRect bar{
@@ -433,10 +453,11 @@ void render_game(bool is_obs) {
 }
 
 void reset() {
+    apply_distribution_mode();
     c.clear_entities();
     cur_time = 0;
 
-    tilemap->regenerate(rng, {});
+    tilemap->regenerate(rng, tilemap_config);
 
     std::uniform_int_distribution<int> background_dist(0, (int)background_textures.size() - 1);
     current_background_index = background_dist(rng);

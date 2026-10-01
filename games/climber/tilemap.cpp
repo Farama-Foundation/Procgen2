@@ -73,7 +73,7 @@ void System_Tilemap::spawn_point(int x, int y) {
 
 // Main map generation
 void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
-    const int main_width = 20;
+    const int main_width = cfg.easy_mode ? 16 : 20;
     const int main_height = 64;
     const float max_jump = 1.5f;
     const float gravity = 0.2f;

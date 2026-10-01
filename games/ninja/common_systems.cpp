@@ -6,6 +6,9 @@
 #include <cmath>
 #include <cassert>
 
+extern float g_ninja_max_jump;
+extern float g_ninja_jump_charge_inc;
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -131,9 +134,9 @@ void System_Agent::apply_intent(int move_action) {
     const float mixrate = 0.5f;
     const float air_control = 0.15f;
     const float maxspeed = 0.5f;
-    const float max_jump = 1.5f;
+    const float max_jump = g_ninja_max_jump;
     const float gravity = 0.2f;
-    const float jump_charge_inc = 0.25f;
+    const float jump_charge_inc = g_ninja_jump_charge_inc;
 
     std::shared_ptr<System_Tilemap> tilemap = c.system_manager.get_system<System_Tilemap>();
 

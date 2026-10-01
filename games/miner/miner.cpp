@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cassert>
 #include <cmath>
@@ -14,6 +15,7 @@
 #include "helpers.h"
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 
 cenv_make_data make_data;
 cenv_reset_data reset_data;
@@ -31,9 +33,9 @@ const int num_actions = 15;
 int window_width  = 512;
 int window_height = 512;
 
-// Hard mode
-const int WORLD_W = 20;
-const int WORLD_H = 20;
+// Size is set from distribution_mode (easy 10, hard 20, memory 35)
+int world_w = 20;
+int world_h = 20;
 const float COMPLETION_BONUS = 10.f;
 const float DIAMOND_REWARD   = 1.f;
 const int TIMEOUT = 1000;
@@ -65,7 +67,7 @@ int diamonds_remaining = 0;
 int exit_x = 0, exit_y = 0;
 int cur_time = 0;
 int bg_index = 0;
-std::vector<int> grid;  // WORLD_W * WORLD_H
+std::vector<int> grid;  // world_w * world_h
 
 void render_game(bool is_obs);
 void reset_game();
@@ -76,22 +78,22 @@ static int randn(int n) {
     return std::uniform_int_distribution<int>(0, n - 1)(rng);
 }
 
-static int idx(int x, int y) { return y * WORLD_W + x; }
+static int idx(int x, int y) { return y * world_w + x; }
 
 static int get_obj(int x, int y) {
-    if (x < 0 || y < 0 || x >= WORLD_W || y >= WORLD_H) return CELL_OOB;
+    if (x < 0 || y < 0 || x >= world_w || y >= world_h) return CELL_OOB;
     return grid[idx(x, y)];
 }
 static int get_obj_i(int i) {
-    if (i < 0 || i >= WORLD_W * WORLD_H) return CELL_OOB;
+    if (i < 0 || i >= world_w * world_h) return CELL_OOB;
     return grid[i];
 }
 static void set_obj(int x, int y, int v) {
-    if (x < 0 || y < 0 || x >= WORLD_W || y >= WORLD_H) return;
+    if (x < 0 || y < 0 || x >= world_w || y >= world_h) return;
     grid[idx(x, y)] = v;
 }
 static void set_obj_i(int i, int v) {
-    if (i < 0 || i >= WORLD_W * WORLD_H) return;
+    if (i < 0 || i >= world_w * world_h) return;
     grid[i] = v;
 }
 
@@ -128,6 +130,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
         if (name == "seed")   seed = (unsigned int)options[i].value.i;
         if (name == "width")  window_width  = options[i].value.i;
         if (name == "height") window_height = options[i].value.i;
+        if (name == "distribution_mode") distribution_mode = options[i].value.i;
     }
 
     make_data.observation_spaces_size = 1;
@@ -219,12 +222,20 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
 }
 
 void reset_game() {
+    if (distribution_mode == DIST_EASY) {
+        world_w = world_h = 10;
+    } else if (distribution_mode == DIST_MEMORY) {
+        world_w = world_h = 35;
+    } else {
+        world_w = world_h = 20;
+    }
+
     cur_time = 0;
     player_flip = false;
     agent_vx = 0;
     bg_index = randn((int)bg_textures.size());
 
-    const int area = WORLD_W * WORLD_H;
+    const int area = world_w * world_h;
     grid.assign(area, CELL_DIRT);
 
     int num_diamonds = (int)(12.f / 400.f * area);  // 12
@@ -236,8 +247,8 @@ void reset_game() {
     for (int i = area - 1; i > 0; i--)
         std::swap(cells[i], cells[randn(i + 1)]);
 
-    agent_x = cells[0] % WORLD_W;
-    agent_y = cells[0] / WORLD_W;
+    agent_x = cells[0] % world_w;
+    agent_y = cells[0] / world_w;
 
     for (int i = 0; i < num_diamonds; i++) {
         int cell = cells[i + 1];
@@ -260,18 +271,18 @@ void reset_game() {
 
     std::vector<int> exit_cands;
     for (int cell : dirt_cells) {
-        int x = cell % WORLD_W, y = cell / WORLD_W;
+        int x = cell % world_w, y = cell / world_w;
         int above = get_obj(x, y + 1);
         if (above == CELL_DIRT || above == CELL_OOB)
             exit_cands.push_back(cell);
     }
     if (exit_cands.empty()) {
-        exit_x = 0; exit_y = WORLD_H - 1;
+        exit_x = 0; exit_y = world_h - 1;
         set_obj(exit_x, exit_y, CELL_SPACE);
     } else {
         int exit_cell = exit_cands[randn((int)exit_cands.size())];
-        exit_x = exit_cell % WORLD_W;
-        exit_y = exit_cell / WORLD_W;
+        exit_x = exit_cell % world_w;
+        exit_y = exit_cell / world_w;
         set_obj(exit_x, exit_y, CELL_SPACE);
     }
 
@@ -328,7 +339,7 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     }
 
     // Push (original: after a blocked step, vx==0)
-    if (!moved && dx == 1 && agent_x < WORLD_W - 2
+    if (!moved && dx == 1 && agent_x < world_w - 2
         && get_obj(agent_x + 1, agent_y) == CELL_BOULDER
         && get_obj(agent_x + 2, agent_y) == CELL_SPACE) {
         set_obj(agent_x + 1, agent_y, CELL_SPACE);
@@ -350,12 +361,12 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
     if (standing == CELL_DIRT || standing == CELL_DIAMOND)
         set_obj(agent_x, agent_y, CELL_SPACE);
 
-    const int area = WORLD_W * WORLD_H;
+    const int area = world_w * world_h;
     int diamonds_count = 0;
     for (int i = 0; i < area; i++) {
         int obj = get_obj_i(i);
-        int obj_x = i % WORLD_W;
-        int obj_y = i / WORLD_W;
+        int obj_x = i % world_w;
+        int obj_y = i / world_w;
         int stat = stationary(obj);
         if (stat == CELL_DIAMOND) diamonds_count++;
 
@@ -375,7 +386,7 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
                        && is_free(obj_x - 1, obj_y - 1)) {
                 set_obj_i(i, CELL_SPACE);
                 set_obj(obj_x - 1, obj_y, stationary(obj));
-            } else if (is_round(obj2) && obj_x < WORLD_W - 1
+            } else if (is_round(obj2) && obj_x < world_w - 1
                        && is_free(obj_x + 1, obj_y)
                        && is_free(obj_x + 1, obj_y - 1)) {
                 set_obj_i(i, CELL_SPACE);
@@ -408,6 +419,7 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
     for (int i = 0; i < options_size; i++) {
         std::string name(options[i].name);
         if (name == "seed") rng.seed((unsigned int)options[i].value.i);
+        else if (name == "distribution_mode" && options[i].value_type == CENV_VALUE_TYPE_INT) distribution_mode = options[i].value.i;
     }
     reset_game();
     render_game(true);
@@ -436,10 +448,10 @@ void render_game(bool is_obs) {
     SDL_SetRenderDrawColor(gr.get_renderer(), 0, 0, 0, 255);
     SDL_RenderClear(gr.get_renderer());
 
-    float view = (float)WORLD_H;
+    float view = (distribution_mode == DIST_MEMORY) ? 8.0f : (float)world_h;
     float pix  = (float)height / view;
-    float cam_x = 0.5f * WORLD_W;
-    float cam_y = 0.5f * WORLD_H;
+    float cam_x = (distribution_mode == DIST_MEMORY) ? (agent_x + 0.5f) : (0.5f * world_w);
+    float cam_y = (distribution_mode == DIST_MEMORY) ? (agent_y + 0.5f) : (0.5f * world_h);
     float wr = 0.5f;
 
     if (!bg_textures.empty()) {
@@ -454,8 +466,8 @@ void render_game(bool is_obs) {
     blit(&tex_exit, exit_x + 0.5f, exit_y + 0.5f, wr, wr,
          cam_x, cam_y, pix, width, height, false);
 
-    for (int gy = 0; gy < WORLD_H; gy++) {
-        for (int gx = 0; gx < WORLD_W; gx++) {
+    for (int gy = 0; gy < world_h; gy++) {
+        for (int gx = 0; gx < world_w; gx++) {
             int t = get_obj(gx, gy);
             Asset_Texture* tex = nullptr;
             if (t == CELL_DIRT) tex = &tex_dirt;

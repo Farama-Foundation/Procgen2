@@ -34,6 +34,64 @@ def _lib_path(game_dir: str, lib_name: str) -> str:
     return os.path.join(_ROOT, "games", game_dir, "build", f"lib{lib_name}.{ext}")
 
 
+# Matches openai/procgen env.py DISTRIBUTION_MODE_DICT / EXPLORATION_LEVEL_SEEDS.
+DISTRIBUTION_MODE = {
+    "easy": 0,
+    "hard": 1,
+    "extreme": 2,
+    "memory": 10,
+    "exploration": 20,
+}
+
+EXPLORATION_LEVEL_SEEDS = {
+    "coinrun": 1949448038,
+    "caveflyer": 1259048185,
+    "leaper": 1318677581,
+    "jumper": 1434825276,
+    "maze": 158988835,
+    "heist": 876640971,
+    "climber": 1561126160,
+    "ninja": 1123500215,
+}
+
+
+def _resolve_distribution_mode(game_name, distribution_mode, seed):
+    """Map gym.make(distribution_mode=...) to the original ProcGen int + seed."""
+    if isinstance(distribution_mode, (int, float)) and not isinstance(distribution_mode, bool):
+        mode_int = int(distribution_mode)
+        name = None
+        for k, v in DISTRIBUTION_MODE.items():
+            if v == mode_int:
+                name = k
+                break
+        if name is None:
+            raise ValueError(
+                f'"{distribution_mode}" is not a valid distribution mode. '
+                f"Choose one of: {', '.join(DISTRIBUTION_MODE)}."
+            )
+        distribution_mode = name
+
+    if not isinstance(distribution_mode, str):
+        raise ValueError(
+            f'"{distribution_mode}" is not a valid distribution mode. '
+            f"Choose one of: {', '.join(DISTRIBUTION_MODE)}."
+        )
+
+    key = distribution_mode.lower()
+    if key not in DISTRIBUTION_MODE:
+        raise ValueError(
+            f'"{distribution_mode}" is not a valid distribution mode. '
+            f"Choose one of: {', '.join(DISTRIBUTION_MODE)}."
+        )
+
+    if key == "exploration":
+        if game_name not in EXPLORATION_LEVEL_SEEDS:
+            raise ValueError(f"{game_name} does not support exploration mode")
+        return DISTRIBUTION_MODE["hard"], EXPLORATION_LEVEL_SEEDS[game_name]
+
+    return DISTRIBUTION_MODE[key], seed
+
+
 def _make_env(game_dir, lib_name, render_mode, seed, options):
     """Shared factory: load library, build CEnv, raise readable error if missing."""
     from cenv.cenv import CEnv
@@ -73,9 +131,22 @@ class _ProcGen2Env(gym.Env, EzPickle):
     #   _GAME_DIR  : str   e.g. "coinrun"
     #   _LIB_NAME  : str   e.g. "CoinRun"
 
-    def __init__(self, render_mode=None, seed=None, **options):
+    def __init__(self, render_mode=None, seed=None, distribution_mode="hard", **options):
         # EzPickle stores these exact args so __reduce__ can reconstruct us.
-        EzPickle.__init__(self, render_mode=render_mode, seed=seed, **options)
+        EzPickle.__init__(
+            self,
+            render_mode=render_mode,
+            seed=seed,
+            distribution_mode=distribution_mode,
+            **options,
+        )
+
+        mode_int, seed = _resolve_distribution_mode(
+            self._GAME_DIR, distribution_mode, seed
+        )
+        self._distribution_mode = mode_int
+        options = dict(options)
+        options["distribution_mode"] = int(mode_int)
 
         self._env = _make_env(
             self._GAME_DIR, self._LIB_NAME, render_mode, seed, options
@@ -90,7 +161,16 @@ class _ProcGen2Env(gym.Env, EzPickle):
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)   # sets self._np_random (required by check_env)
-        return self._env.reset(seed=seed, options=options)
+        merged = dict(options) if options else {}
+        if "distribution_mode" in merged:
+            mode_int, seed = _resolve_distribution_mode(
+                self._GAME_DIR, merged["distribution_mode"], seed
+            )
+            self._distribution_mode = mode_int
+            merged["distribution_mode"] = int(mode_int)
+        else:
+            merged["distribution_mode"] = int(self._distribution_mode)
+        return self._env.reset(seed=seed, options=merged)
 
     def step(self, action):
         return self._env.step(action)
@@ -252,6 +332,28 @@ class _NinjaEnv(_ProcGen2Env):
     _LIB_NAME = "Ninja"
 
 
+class _FruitBotEnv(_ProcGen2Env):
+    """
+    FruitBot — drift up a corridor, collect fruit, unlock doors, reach the presents.
+
+    Observation space : Dict{ "screen": Box(0, 255, (12288,), uint8) }  (64×64×3 flat)
+    Action space      : Dict{ "action": MultiDiscrete([15]) }
+    """
+    _GAME_DIR = "fruitbot"
+    _LIB_NAME = "FruitBot"
+
+
+class _BigFishEnv(_ProcGen2Env):
+    """
+    BigFish — eat smaller fish to grow; die if you touch a larger one. Eat 30 to win.
+
+    Observation space : Dict{ "screen": Box(0, 255, (12288,), uint8) }  (64×64×3 flat)
+    Action space      : Dict{ "action": MultiDiscrete([15]) }
+    """
+    _GAME_DIR = "bigfish"
+    _LIB_NAME = "BigFish"
+
+
 class _PlunderEnv(_ProcGen2Env):
     """
     Plunder — sink the marked target ships, avoid the others, fill the quota.
@@ -300,7 +402,7 @@ gym.register(
 gym.register(
     id="procgen2/Jumper-v0",
     entry_point="procgen2:_JumperEnv",
-    max_episode_steps=1000,
+    max_episode_steps=2000,
 )
 
 gym.register(
@@ -349,4 +451,16 @@ gym.register(
     id="procgen2/Plunder-v0",
     entry_point="procgen2:_PlunderEnv",
     max_episode_steps=4000,
+)
+
+gym.register(
+    id="procgen2/FruitBot-v0",
+    entry_point="procgen2:_FruitBotEnv",
+    max_episode_steps=1000,
+)
+
+gym.register(
+    id="procgen2/BigFish-v0",
+    entry_point="procgen2:_BigFishEnv",
+    max_episode_steps=6000,
 )

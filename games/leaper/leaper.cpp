@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cassert>
 #include <cmath>
@@ -17,6 +18,7 @@
 #endif
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 
 cenv_make_data make_data;
 cenv_reset_data reset_data;
@@ -46,10 +48,10 @@ const float GOAL_REWARD = 10.f;
 const int TIMEOUT = 500;
 const int FROG_FRAMES = NSTEP;
 
-const float MIN_CAR_SPEED = 0.05f;
-const float MAX_CAR_SPEED = 0.2f;
-const float MIN_LOG_SPEED = 0.05f;
-const float MAX_LOG_SPEED = 0.1f;
+float min_car_speed = 0.05f;
+float max_car_speed = 0.2f;
+float min_log_speed = 0.05f;
+float max_log_speed = 0.1f;
 
 enum Tile { TILE_GRASS = 0, TILE_ROAD, TILE_WATER };
 enum EntType { ENT_CAR = 0, ENT_LOG, ENT_FINISH };
@@ -143,6 +145,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
         if (name == "seed")   seed = (unsigned int)options[i].value.i;
         if (name == "width")  window_width  = options[i].value.i;
         if (name == "height") window_height = options[i].value.i;
+        if (name == "distribution_mode") distribution_mode = options[i].value.i;
     }
 
     make_data.observation_spaces_size = 1;
@@ -299,35 +302,51 @@ void reset_game() {
     player_rot = 0;
     frog_theme = 0;
     bg_index = randn((int)bg_textures.size());
-    world_w = world_h = WORLD_DIM;
+    if (distribution_mode == DIST_EASY) {
+        world_w = world_h = 9;
+        min_car_speed = 0.03f; max_car_speed = 0.12f;
+        min_log_speed = 0.025f; max_log_speed = 0.075f;
+    } else if (distribution_mode == DIST_EXTREME) {
+        world_w = world_h = 20;
+        min_car_speed = 0.1f; max_car_speed = 0.3f;
+        min_log_speed = 0.1f; max_log_speed = 0.2f;
+    } else {
+        world_w = world_h = 15;
+        min_car_speed = 0.05f; max_car_speed = 0.2f;
+        min_log_speed = 0.05f; max_log_speed = 0.1f;
+    }
+
     tiles.assign(world_w * world_h, TILE_GRASS);
 
     player_x = rand01() * (world_w - 2.f * PLAYER_R) + PLAYER_R;
     player_y = PLAYER_R;
 
-    bottom_road_y = randn(2) + 1;
-    int difficulty = randn(5);          // 0–4
-    int extra_lane = randn(4);          // 0–3
+    int extra_space_road = (distribution_mode == DIST_EASY) ? 0 : randn(2);
+    bottom_road_y = extra_space_road + 1;
+    int max_diff = (distribution_mode == DIST_EASY) ? 3 : 4;
+    int difficulty = randn(max_diff + 1);
+    int extra_lane = (distribution_mode == DIST_EASY) ? 0 : randn(4);
     int num_road = difficulty + (extra_lane == 2 ? 1 : 0);
     road_lane_speeds.clear();
     for (int lane = 0; lane < num_road; lane++) {
-        road_lane_speeds.push_back(rand_sign() * randrange(MIN_CAR_SPEED, MAX_CAR_SPEED));
+        road_lane_speeds.push_back(rand_sign() * randrange(min_car_speed, max_car_speed));
         fill_row(bottom_road_y + lane, TILE_ROAD);
     }
 
-    bottom_water_y = bottom_road_y + num_road + randn(2) + 1;
+    int extra_space_water = (distribution_mode == DIST_EASY) ? 0 : randn(2);
+    bottom_water_y = bottom_road_y + num_road + extra_space_water + 1;
     int num_water = difficulty + (extra_lane == 3 ? 1 : 0);
     water_lane_speeds.clear();
     float curr_sign = rand_sign();
     for (int lane = 0; lane < num_water; lane++) {
-        water_lane_speeds.push_back(curr_sign * randrange(MIN_LOG_SPEED, MAX_LOG_SPEED));
+        water_lane_speeds.push_back(curr_sign * randrange(min_log_speed, max_log_speed));
         curr_sign *= -1.f;
         fill_row(bottom_water_y + lane, TILE_WATER);
     }
 
     goal_y = bottom_water_y + num_water + 1;
 
-    float min_speed = std::min(MIN_CAR_SPEED, MIN_LOG_SPEED);
+    float min_speed = std::min(min_car_speed, min_log_speed);
     int warm = (int)(world_w / min_speed);
     for (int i = 0; i < warm; i++) {
         spawn_entities();
@@ -460,6 +479,7 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
     for (int i = 0; i < options_size; i++) {
         std::string name(options[i].name);
         if (name == "seed") rng.seed((unsigned int)options[i].value.i);
+        else if (name == "distribution_mode" && options[i].value_type == CENV_VALUE_TYPE_INT) distribution_mode = options[i].value.i;
     }
     reset_game();
     render_game(true);

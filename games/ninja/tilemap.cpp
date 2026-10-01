@@ -29,10 +29,10 @@ void System_Tilemap::set_area(int x, int y, int width, int height, Tile_ID id) {
             set(x + dx, y + dy, id);
 }
 
-void System_Tilemap::regenerate(std::mt19937 &rng, const Config &) {
+void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     const int main_width = 64;
     const int main_height = 64;
-    const float max_jump = 1.5f;
+    const float max_jump = cfg.easy_mode ? 1.25f : 1.5f;
     const float gravity = 0.2f;
 
     this->map_width = main_width;
@@ -59,6 +59,12 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &) {
     int min_gap = difficulty - 1;
     int min_plat_w = 1;
     int inc_dy = 4;
+    if (cfg.easy_mode) {
+        min_gap -= 1;
+        if (min_gap < 0) min_gap = 0;
+        min_plat_w = 3;
+        inc_dy = 2;
+    }
     float bomb_prob = 0.25f * (difficulty - 1);
     int max_gap_inc = difficulty == 1 ? 1 : 2;
 

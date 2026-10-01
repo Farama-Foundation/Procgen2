@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cassert>
 #include <cmath>
@@ -11,6 +12,7 @@
 #include "helpers.h"
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 
 // ---------------------- CEnv Interface ----------------------
 
@@ -41,15 +43,16 @@ const float WORLD_H = 16.0f;
 // Physics (hard mode, matching original starpilot.cpp + basic-abstract-game.cpp)
 const float V_SCALE      = 2.0f / 5.0f;   // 0.4
 const float MIXRATE      = 0.5f;
-const float MAXSPEED     = 0.75f;
+float MAXSPEED     = 0.75f;
 const float DECAY        = 0.9f;           // per-step velocity decay
 
 // Object speeds in world-units/step (after V_SCALE)
-const float SPD_FLYER        = 1.0f  * V_SCALE;  // 0.40
+float SPD_FLYER        = 1.0f  * V_SCALE;  // 0.40
 const float SPD_FAST_FLYER   = 1.5f  * V_SCALE;  // 0.60
 const float SPD_SLOW         = 0.5f  * V_SCALE;  // 0.20 (meteors/clouds/turrets/bg)
 const float SPD_BULLET_PLAYER= 2.0f  * V_SCALE;  // 0.80
-const float SPD_BULLET_ENEMY = 2.0f  * V_SCALE;  // 0.80
+float SPD_BULLET_ENEMY = 2.0f  * V_SCALE;  // 0.80
+float flyer_hp = 2.f, fast_flyer_hp = 1.f, turret_hp = 5.f;
 
 const float ENEMY_REWARD     = 1.0f;
 const float COMPLETION_BONUS = 10.0f;
@@ -195,16 +198,20 @@ static void gen_spawners() {
         return 0.5f;  // flyer / fast_flyer
     };
 
-    // Spawn-weight table (hard mode): FLYER×3, FAST_FLYER×1, METEOR×1, CLOUD×1, TURRET×1
+    int w_flyer = 3, w_fast = 1, w_meteor = 1, w_cloud = 1, w_turret = 1;
+    if (distribution_mode == DIST_EASY) {
+        w_fast = w_meteor = w_cloud = w_turret = 0;
+    }
     struct WEntry { ObjType type; int weight; };
     const WEntry table[] = {
-        { OBJ_FLYER,      3 },
-        { OBJ_FAST_FLYER, 1 },
-        { OBJ_METEOR,     1 },
-        { OBJ_CLOUD,      1 },
-        { OBJ_TURRET,     1 },
+        { OBJ_FLYER,      w_flyer },
+        { OBJ_FAST_FLYER, w_fast },
+        { OBJ_METEOR,     w_meteor },
+        { OBJ_CLOUD,      w_cloud },
+        { OBJ_TURRET,     w_turret },
     };
-    const int total_w = 8;
+    int total_w = w_flyer + w_fast + w_meteor + w_cloud + w_turret;
+    if (total_w < 1) total_w = 1;
 
     while (t <= SHOOTER_WIN_TIME) {
         // Weighted random pick
@@ -250,7 +257,7 @@ static void gen_spawners() {
                 obj.vx       = -SPD_SLOW;
                 obj.vy       = 0;
                 obj.fire_per = rand_int(20, 30);
-                obj.health   = 5.f;
+                obj.health   = turret_hp;
                 obj.theme    = rand_int(0, 1);
             } else {
                 // Flyer / fast flyer: angled trajectory from right
@@ -262,7 +269,7 @@ static void gen_spawners() {
                 obj.vx = -cosf(theta) * speed;
                 obj.vy =  sinf(theta) * speed;
                 obj.fire_abs = spawn_time + rand_int(10, 100);
-                obj.health   = (type == OBJ_FAST_FLYER) ? 1.f : 2.f;
+                obj.health   = (type == OBJ_FAST_FLYER) ? fast_flyer_hp : flyer_hp;
                 obj.rotation = (float)M_PI / 2.f;  // rotated so nose points left
             }
 
@@ -298,6 +305,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
         if (name == "seed")   { seed = (unsigned int)options[i].value.i; }
         if (name == "width")  { window_width  = options[i].value.i; }
         if (name == "height") { window_height = options[i].value.i; }
+        if (name == "distribution_mode") { distribution_mode = options[i].value.i; }
     }
 
     // ---- CEnv buffers ----
@@ -469,6 +477,23 @@ void reset_game() {
     player_vx = 0;
     player_vy = 0;
     player_alive = true;
+
+    if (distribution_mode == DIST_EASY) {
+        SPD_FLYER = 0.75f * V_SCALE;
+        SPD_BULLET_ENEMY = 1.25f * V_SCALE;
+        flyer_hp = 2.f; fast_flyer_hp = 1.f; turret_hp = 5.f;
+        MAXSPEED = 0.75f;
+    } else if (distribution_mode == DIST_EXTREME) {
+        SPD_FLYER = 1.0f * V_SCALE;
+        SPD_BULLET_ENEMY = 2.0f * V_SCALE;
+        flyer_hp = 5.f; fast_flyer_hp = 2.f; turret_hp = 10.f;
+        MAXSPEED = 0.5f;
+    } else {
+        SPD_FLYER = 1.0f * V_SCALE;
+        SPD_BULLET_ENEMY = 2.0f * V_SCALE;
+        flyer_hp = 2.f; fast_flyer_hp = 1.f; turret_hp = 5.f;
+        MAXSPEED = 0.75f;
+    }
 
     gen_spawners();
 }
@@ -730,6 +755,7 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
     for (int i = 0; i < options_size; i++) {
         std::string name(options[i].name);
         if (name == "seed") { rng.seed((unsigned int)options[i].value.i); }
+        else if (name == "distribution_mode" && options[i].value_type == CENV_VALUE_TYPE_INT) distribution_mode = options[i].value.i;
     }
 
     reset_game();

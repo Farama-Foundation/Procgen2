@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cmath>
 #include <iostream>
@@ -7,6 +8,7 @@
 #include "common_systems.h"
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 const bool show_log = false;
 
 // ---------------------- CEnv Interface ----------------------
@@ -51,6 +53,11 @@ std::shared_ptr<System_Sprite_Render> sprite_render;
 std::shared_ptr<System_Hazard> hazard;
 std::shared_ptr<System_Mob_AI> mob_ai;
 std::shared_ptr<System_Agent> agent;
+
+static void apply_distribution_mode() {
+    if (mob_ai)
+        mob_ai->config.mode = (distribution_mode == DIST_EASY) ? easy_mode : hard_mode;
+}
 
 // Big list of different background images
 std::vector<std::string> background_names {
@@ -122,6 +129,10 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
             assert(options[i].value_type == CENV_VALUE_TYPE_INT);
 
             window_height = options[i].value.i;
+        }
+        else if (name == "distribution_mode") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+            distribution_mode = options[i].value.i;
         }
     }
     
@@ -261,6 +272,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
         barrier_textures[i].load(barrier_names[i]);
 
     // Reset spawns entities while generating map
+    apply_distribution_mode();
     reset();
 
     return 0; // No error
@@ -276,8 +288,13 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
 
             rng.seed(options[i].value.i);
         }
+        else if (name == "distribution_mode") {
+            if (options[i].value_type == CENV_VALUE_TYPE_INT)
+                distribution_mode = options[i].value.i;
+        }
     }
 
+    apply_distribution_mode();
     reset();
 
     render_game(true);

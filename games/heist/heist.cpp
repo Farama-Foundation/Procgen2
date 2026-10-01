@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cassert>
 #include <cmath>
@@ -18,6 +19,7 @@
 #endif
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 
 cenv_make_data make_data;
 cenv_reset_data reset_data;
@@ -133,6 +135,7 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
         if (name == "seed")   seed = (unsigned int)options[i].value.i;
         if (name == "width")  window_width  = options[i].value.i;
         if (name == "height") window_height = options[i].value.i;
+        if (name == "distribution_mode") distribution_mode = options[i].value.i;
     }
 
     make_data.observation_spaces_size = 1;
@@ -235,11 +238,19 @@ void reset_game() {
     player_rot = 0;
     bg_index = randn((int)bg_textures.size());
 
-    world_dim = WORLD_DIM;
-    maze_scale = (float)world_dim / (float)world_dim;  // 1.0
+    if (distribution_mode == DIST_EASY)
+        world_dim = 9;
+    else if (distribution_mode == DIST_MEMORY)
+        world_dim = 23;
+    else
+        world_dim = 13;
+    maze_scale = 1.0f;
     int max_diff = (world_dim - MIN_MAZE_DIM) / 2;
     int difficulty = randn(max_diff + 1);
-    num_keys = difficulty + randn(2);
+    if (distribution_mode == DIST_MEMORY)
+        num_keys = randn(4);
+    else
+        num_keys = difficulty + randn(2);
     if (num_keys > 3) num_keys = 3;
     has_keys.assign(num_keys, 0);
 
@@ -367,6 +378,7 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
     for (int i = 0; i < options_size; i++) {
         std::string name(options[i].name);
         if (name == "seed") rng.seed((unsigned int)options[i].value.i);
+        else if (name == "distribution_mode" && options[i].value_type == CENV_VALUE_TYPE_INT) distribution_mode = options[i].value.i;
     }
     reset_game();
     render_game(true);
@@ -395,10 +407,10 @@ void render_game(bool is_obs) {
     SDL_SetRenderDrawColor(gr.get_renderer(), 0, 0, 0, 255);
     SDL_RenderClear(gr.get_renderer());
 
-    float view = (float)world_dim;
+    float view = (distribution_mode == DIST_MEMORY) ? 8.0f : (float)world_dim;
     float pix  = (float)height / view;
-    float cam_x = 0.5f * (float)world_dim;
-    float cam_y = 0.5f * (float)world_dim;
+    float cam_x = (distribution_mode == DIST_MEMORY) ? player_x : (0.5f * (float)world_dim);
+    float cam_y = (distribution_mode == DIST_MEMORY) ? player_y : (0.5f * (float)world_dim);
 
     if (!bg_textures.empty()) {
         Asset_Texture* bg = &bg_textures[bg_index];

@@ -121,9 +121,9 @@ void System_Tilemap::regenerate(std::mt19937 &rng, const Config &cfg) {
     if (cfg.mode == hard_mode)
         world_dim = 40;
     else if (cfg.mode == memory_mode)
-        world_dim = 45;
+        world_dim = 60;
     else
-        world_dim = 20;
+        world_dim = 30;
 
     const int main_width = world_dim;
     const int main_height = world_dim;
