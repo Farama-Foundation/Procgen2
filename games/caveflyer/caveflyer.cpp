@@ -17,6 +17,8 @@ cenv_reset_data reset_data;
 cenv_step_data step_data;
 cenv_render_data render_data;
 
+static bool g_initialized = false;
+
 // Shared value between different datas (optional)
 cenv_key_value observation;
 
@@ -86,6 +88,10 @@ int32_t cenv_get_env_version() {
 }
 
 int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options_size) {
+    if (g_initialized)
+        cenv_close();
+    g_initialized = true;
+
     // ---------------------- CEnv Interface ----------------------
 
     unsigned int seed = time(nullptr);
@@ -177,14 +183,16 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     amask = 0xff000000;
 #endif
 
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+    SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+
+    std::string render_mode_str(render_mode != nullptr ? render_mode : "");
+    if (render_mode_str != "human")
+        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen");
 
     SDL_Init(SDL_INIT_VIDEO);
 
-    IMG_Init(IMG_INIT_PNG);
-
-    window_target = SDL_CreateSurface(window_width, window_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
-    obs_target = SDL_CreateSurface(obs_width, obs_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
+    window_target = SDL_CreateSurface(window_width, window_height, SDL_GetPixelFormatForMasks(32, rmask, gmask, bmask, amask));
+    obs_target = SDL_CreateSurface(obs_width, obs_height, SDL_GetPixelFormatForMasks(32, rmask, gmask, bmask, amask));
 
     window_renderer = SDL_CreateSoftwareRenderer(window_target);
     obs_renderer = SDL_CreateSoftwareRenderer(obs_target);
@@ -377,36 +385,55 @@ int32_t cenv_render() {
 }
 
 void cenv_close() {
-    // ---------------------- CEnv Interface ----------------------
-    
-    // Dealloc make data
-    for (int i = 0; i < make_data.observation_spaces_size; i++)
-        free(make_data.observation_spaces[i].value_buffer.f);
+    if (!g_initialized)
+        return;
 
-    free(make_data.observation_spaces);
+    // ---- Game: ordered teardown ----
+    c.clear_entities();
 
-    for (int i = 0; i < make_data.action_spaces_size; i++)
-        free(make_data.action_spaces[i].value_buffer.i);
-
-    free(make_data.action_spaces);
-
-    // Observations
-    free(observation.value_buffer.b);
-
-    // Frame
-    free(render_data.value_buffer.b);
-    
-    // ---------------------- Game ----------------------
-
-    // Explcit destruct before renderer
     background_textures.clear();
     manager_texture.clear();
 
     SDL_DestroyRenderer(window_renderer);
     SDL_DestroyRenderer(obs_renderer);
+    window_renderer = nullptr;
+    obs_renderer    = nullptr;
+    gr.window_renderer = nullptr;
+    gr.obs_renderer    = nullptr;
 
     SDL_DestroySurface(window_target);
     SDL_DestroySurface(obs_target);
+    window_target = nullptr;
+    obs_target    = nullptr;
+
+    SDL_Quit();
+
+    c.full_reset();
+
+    sprite_render.reset();
+    tilemap.reset();
+    hazard.reset();
+    mob_ai.reset();
+    goal.reset();
+    agent.reset();
+    particles.reset();
+
+    // ---- CEnv interface: free allocated buffers ----
+    for (int i = 0; i < make_data.observation_spaces_size; i++)
+        free(make_data.observation_spaces[i].value_buffer.f);
+    free(make_data.observation_spaces);
+
+    for (int i = 0; i < make_data.action_spaces_size; i++)
+        free(make_data.action_spaces[i].value_buffer.i);
+    free(make_data.action_spaces);
+
+    free(observation.value_buffer.b);
+    observation.value_buffer.b = nullptr;
+
+    free(render_data.value_buffer.b);
+    render_data.value_buffer.b = nullptr;
+
+    g_initialized = false;
 }
 
 // Rendering
@@ -437,6 +464,8 @@ void render_game(bool is_obs) {
     particles->render();
     sprite_render->render(positive_z);
     agent->render();
+
+    SDL_RenderPresent(gr.get_renderer());
 }
 
 void reset() {
@@ -452,6 +481,15 @@ void reset() {
     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
     current_background_offset_x = dist01(rng);
+
+    // Centre the camera on the newly spawned agent so the first rendered
+    // frame (in cenv_reset, before any step runs) shows the correct view.
+    for (auto const &e : agent->entities) {
+        auto const &transform = c.get_component<Component_Transform>(e);
+        gr.camera_position.x = transform.position.x * unit_to_pixels;
+        gr.camera_position.y = transform.position.y * unit_to_pixels;
+        break;
+    }
 
     // Clear before next render to remove now destroyed entities from previous episode
     sprite_render->clear_render();

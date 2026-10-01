@@ -85,8 +85,13 @@ bool System_Agent::update(float dt, const std::shared_ptr<System_Goal> &goal, in
 
         const auto &collision = c.get_component<Component_Collision>(e);
 
-        int movement_x = agent.action / 3 - 1;
-        int movement_y = movement_x ? 0 : -(agent.action % 3 - 1);
+        // Raw x-axis intent from the 15-action layout (shared with platformer games).
+        // Values outside [-1, 1] (actions 9-14) would let the agent move multiple
+        // cells per step and clip through walls, so clamp to one step at a time.
+        int raw_x = agent.action / 3 - 1;
+        int movement_x = raw_x < -1 ? -1 : (raw_x > 1 ? 1 : raw_x);
+        // Vertical movement only when there is no horizontal intent (raw_x == 0).
+        int movement_y = raw_x ? 0 : -(agent.action % 3 - 1);
 
         if (movement_x) {
             Tile_ID id = tilemap->get(static_cast<int>(transform.position.x + movement_x), tilemap->get_height() - 1 - static_cast<int>(transform.position.y));
