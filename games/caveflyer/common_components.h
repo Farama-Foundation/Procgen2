@@ -39,6 +39,7 @@ struct Component_Mob_AI {
 // Reset-triggering
 struct Component_Hazard {
     bool destroyable = false;
+    int health = 0;  // TARGET starts at 5; only destroyable hazards use this
 };
 
 struct Component_Goal {};

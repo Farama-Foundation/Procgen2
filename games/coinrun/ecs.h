@@ -207,6 +207,13 @@ public:
             component->clear_entities();
         }
     }
+
+    // Wipe component registrations entirely (for library re-initialisation).
+    void full_reset() {
+        component_types.clear();
+        component_arrays.clear();
+        next_component_type = 0;
+    }
 };
 
 class System {
@@ -257,6 +264,12 @@ public:
     void entity_destroyed(Entity e);
     void clear_entities();
 
+    // Wipe system registrations entirely (for library re-initialisation).
+    void full_reset() {
+        signatures.clear();
+        systems.clear();
+    }
+
     void entity_signature_changed(Entity e, Signature s);
 };
 
@@ -272,6 +285,14 @@ public:
 
     void destroy_entity(Entity e);
     void clear_entities();
+
+    // Full wipe: clears all entities AND all component/system registrations.
+    // Call this before re-calling cenv_make on the same library instance.
+    void full_reset() {
+        entity_manager.clear_entities();
+        component_manager.full_reset();
+        system_manager.full_reset();
+    }
 
     template<typename T>
     void register_component() {

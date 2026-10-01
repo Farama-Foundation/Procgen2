@@ -41,7 +41,7 @@ struct Component_Mob_AI {
 
     float attack_timer = 0.0f;
 
-    int hp = 0;
+    int hp = 3;
 };
 
 // Reset-triggering

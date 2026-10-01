@@ -200,7 +200,6 @@ bool System_Mob_AI::update(float dt, const std::shared_ptr<System_Hazard> &hazar
     std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
     const float shielded_phase_time = 180.0f + dist01(rng) * (config.mode == hard_mode ? 80.0f : 30.0f); // Time to stay in a shielded phase
-    const float unshielded_phase_time = 300.0f; // Next phase triggered by hit by player mostly
     const float attack_time = 8.0f;
     const int num_weapons = 4;
     const float explosion_rate = 0.3f;
@@ -239,7 +238,10 @@ bool System_Mob_AI::update(float dt, const std::shared_ptr<System_Hazard> &hazar
 
             mob_ai.weapon_index = weapon_dist(rng);
             mob_ai.attack_timer = 0.0f;
-            mob_ai.hp = boss_hp;
+            // Only refill HP when a new unshielded (vulnerable) round begins.
+            // Resetting on every timer==0 was wiping hits if the shield came back.
+            if (mob_ai.phase_index % 2 == 1)
+                mob_ai.hp = boss_hp;
         }
 
         if (mob_ai.phase_index % 2 == 0) { // Shielded phase
@@ -255,27 +257,21 @@ bool System_Mob_AI::update(float dt, const std::shared_ptr<System_Hazard> &hazar
             // Spawn bullets
             fire_pattern(transform.position, mob_ai.weapon_index, mob_ai.attack_timer, dt, rng);
         }
-        else { // Unshielded phase
-            if (mob_ai.phase_timer >= unshielded_phase_time) {
-                // Next phase
-                mob_ai.phase_timer = 0.0f;
-
-                mob_ai.phase_index++;
-            }
-            else
-                mob_ai.phase_timer += dt;
+        else { // Unshielded phase — stays down until this round's HP is depleted
+            mob_ai.phase_timer += dt;
 
             fire_pattern(transform.position, -1, mob_ai.attack_timer, dt, rng); // Passive attack (index -1)
 
             // If HP depleted, show some explosions
             if (mob_ai.hp == 0) {
                 show_damage(transform.position, dt, rng);
-                
+
                 if (damage_timer >= damage_time) { // If done showing damage, go to next phase
                     damage_timer = 0.0f;
 
                     mob_ai.phase_index++;
-                    mob_ai.hp = boss_hp; // Reset HP
+                    mob_ai.phase_timer = 0.0f;
+                    mob_ai.hp = boss_hp; // Reset HP for the next round
                 }
                 else
                     damage_timer += dt;
@@ -458,6 +454,7 @@ void System_Mob_AI::reset(std::mt19937 &rng) {
     explosion_timer = 0.0f;
     damage_timer = 0.0f;
     move_timer = 0.0f;
+    pending_reward = 0;
 
     std::uniform_int_distribution<int> ship_texture_dist(0, ship_textures.size() - 1);
 
@@ -560,25 +557,23 @@ bool System_Agent::update(float dt, const std::shared_ptr<System_Hazard> &hazard
         // Reset collision to updated collision
         world_collision = Rectangle{ transform.position.x + collision.bounds.x, transform.position.y + collision.bounds.y, collision.bounds.width, collision.bounds.height };
 
-        if (fire) {
-            if (bullet_timer == 0.0f && num_bullets < bullets.size()) {
-                bullet_timer = bullet_time;
+        if (fire && bullet_timer == 0.0f && num_bullets < bullets.size()) {
+            bullet_timer = bullet_time;
 
-                Bullet &bullet = bullets[next_bullet];
+            Bullet &bullet = bullets[next_bullet];
 
-                bullet.rotation = transform.rotation;
-                bullet.vel = { 0.0f, -bullet_speed };
-                bullet.pos = transform.position;
-                bullet.frame = 0.0f; // First frame (bullet)
-                bullet.bouncing = false;
-                bullet.bounce_timer = 0.0f;
+            bullet.rotation = transform.rotation;
+            bullet.vel = { 0.0f, -bullet_speed };
+            bullet.pos = transform.position;
+            bullet.frame = 0.0f; // First frame (bullet)
+            bullet.bouncing = false;
+            bullet.bounce_timer = 0.0f;
 
-                next_bullet = (next_bullet + 1) % bullets.size();
-                num_bullets++;
-            }
-            else
-                bullet_timer = std::max(0.0f, bullet_timer - dt);
+            next_bullet = (next_bullet + 1) % bullets.size();
+            num_bullets++;
         }
+        if (bullet_timer > 0.0f)
+            bullet_timer = std::max(0.0f, bullet_timer - dt);
 
         // Go through all hazards
         for (auto const &h : hazard->get_entities()) {
@@ -605,7 +600,7 @@ bool System_Agent::update(float dt, const std::shared_ptr<System_Hazard> &hazard
                 continue;
 
             if (bullet.frame == 0.0f) {
-                Rectangle world_collision{ bullet.pos.x - 0.01f, bullet.pos.y - 0.01f, 0.02f, 0.02f };
+                Rectangle world_collision{ bullet.pos.x - 0.08f, bullet.pos.y - 0.08f, 0.16f, 0.16f };
 
                 if (!check_collision(world_collision, screen_rect)) {
                     // Remove by setting to completed animation
@@ -638,8 +633,11 @@ bool System_Agent::update(float dt, const std::shared_ptr<System_Hazard> &hazard
                                     bullet.vel = { 0.0f, 0.0f };
                                     bullet.frame = 1.0f;
 
-                                    if (boss_mob_ai.hp > 0)
+                                    if (boss_mob_ai.hp > 0) {
                                         boss_mob_ai.hp--;
+                                        if (boss_mob_ai.hp == 0)
+                                            mob_ai->pending_reward += 1;
+                                    }
                                 }
                             }
                             else {
