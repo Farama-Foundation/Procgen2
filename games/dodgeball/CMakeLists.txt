@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(Climber)
+project(Dodgeball)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
@@ -12,35 +12,25 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-############################################################################
-# Platform / architecture configuration (ARM64, universal binary, Linux ARM)
 include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ProcGen2Platform.cmake" OPTIONAL)
 
-############################################################################
-# SDL dependencies
 find_package(SDL3 REQUIRED)
 find_package(SDL3_image REQUIRED)
 
-############################################################################
-
 include_directories(".")
-
 include_directories("${PROJECT_SOURCE_DIR}")
 
 set(SOURCE_PATH "${PROJECT_SOURCE_DIR}")
 set(SOURCES
-    "${SOURCE_PATH}/climber.cpp"
+    "${SOURCE_PATH}/dodgeball.cpp"
     "${SOURCE_PATH}/ecs.cpp"
     "${SOURCE_PATH}/helpers.cpp"
     "${SOURCE_PATH}/renderer.cpp"
     "${SOURCE_PATH}/common_assets.cpp"
-    "${SOURCE_PATH}/common_systems.cpp"
-    "${SOURCE_PATH}/tilemap.cpp"
 )
 
-add_library(Climber SHARED ${SOURCES})
+add_library(Dodgeball SHARED ${SOURCES})
 
-target_link_libraries(Climber SDL3::SDL3 SDL3_image::SDL3_image)
+target_link_libraries(Dodgeball SDL3::SDL3 SDL3_image::SDL3_image)
 
-set_target_properties(Climber PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-
+set_target_properties(Dodgeball PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
