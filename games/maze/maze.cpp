@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cmath>
 #include <iostream>
@@ -8,6 +9,7 @@
 #include "common_systems.h"
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 const bool show_log = false;
 
 // ---------------------- CEnv Interface ----------------------
@@ -17,6 +19,8 @@ cenv_make_data make_data;
 cenv_reset_data reset_data;
 cenv_step_data step_data;
 cenv_render_data render_data;
+
+static bool g_initialized = false;
 
 // Shared value between different datas (optional)
 cenv_key_value observation;
@@ -58,6 +62,15 @@ std::shared_ptr<System_Agent> agent;
 System_Tilemap::Config tilemap_config;
 int current_map_theme = 0;
 
+static void apply_distribution_mode() {
+    if (distribution_mode == DIST_MEMORY)
+        tilemap_config.mode = memory_mode;
+    else if (distribution_mode == DIST_EASY)
+        tilemap_config.mode = easy_mode;
+    else
+        tilemap_config.mode = hard_mode;
+}
+
 // Big list of different background images
 std::vector<std::string> background_names {
     "assets/topdown_backgrounds/floortiles.png",
@@ -85,6 +98,10 @@ int32_t cenv_get_env_version() {
 }
 
 int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options_size) {
+    if (g_initialized)
+        cenv_close();
+    g_initialized = true;
+
     // ---------------------- CEnv Interface ----------------------
 
     unsigned int seed = time(nullptr);
@@ -107,6 +124,10 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
             assert(options[i].value_type == CENV_VALUE_TYPE_INT);
 
             window_height = options[i].value.i;
+        }
+        else if (name == "distribution_mode") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+            distribution_mode = options[i].value.i;
         }
     }
     
@@ -176,14 +197,16 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     amask = 0xff000000;
 #endif
 
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+    SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+
+    std::string render_mode_str(render_mode != nullptr ? render_mode : "");
+    if (render_mode_str != "human")
+        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen");
 
     SDL_Init(SDL_INIT_VIDEO);
 
-    IMG_Init(IMG_INIT_PNG);
-
-    window_target = SDL_CreateSurface(window_width, window_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
-    obs_target = SDL_CreateSurface(obs_width, obs_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
+    window_target = SDL_CreateSurface(window_width, window_height, SDL_GetPixelFormatForMasks(32, rmask, gmask, bmask, amask));
+    obs_target = SDL_CreateSurface(obs_width, obs_height, SDL_GetPixelFormatForMasks(32, rmask, gmask, bmask, amask));
 
     window_renderer = SDL_CreateSoftwareRenderer(window_target);
     obs_renderer = SDL_CreateSoftwareRenderer(obs_target);
@@ -237,6 +260,8 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     for (int i = 0; i < background_names.size(); i++)
         background_textures[i].load(background_names[i]);
 
+    apply_distribution_mode();
+
     // Reset spawns entities while generating map
     reset();
 
@@ -253,8 +278,13 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
 
             rng.seed(options[i].value.i);
         }
+        else if (name == "distribution_mode") {
+            if (options[i].value_type == CENV_VALUE_TYPE_INT)
+                distribution_mode = options[i].value.i;
+        }
     }
 
+    apply_distribution_mode();
     reset();
 
     render_game(true);
@@ -350,36 +380,52 @@ int32_t cenv_render() {
 }
 
 void cenv_close() {
-    // ---------------------- CEnv Interface ----------------------
-    
-    // Dealloc make data
-    for (int i = 0; i < make_data.observation_spaces_size; i++)
-        free(make_data.observation_spaces[i].value_buffer.f);
+    if (!g_initialized)
+        return;
 
-    free(make_data.observation_spaces);
+    // ---- Game: ordered teardown ----
+    c.clear_entities();
 
-    for (int i = 0; i < make_data.action_spaces_size; i++)
-        free(make_data.action_spaces[i].value_buffer.i);
-
-    free(make_data.action_spaces);
-
-    // Observations
-    free(observation.value_buffer.b);
-
-    // Frame
-    free(render_data.value_buffer.b);
-    
-    // ---------------------- Game ----------------------
-
-    // Explcit destruct before renderer
     background_textures.clear();
     manager_texture.clear();
 
     SDL_DestroyRenderer(window_renderer);
     SDL_DestroyRenderer(obs_renderer);
+    window_renderer = nullptr;
+    obs_renderer    = nullptr;
+    gr.window_renderer = nullptr;
+    gr.obs_renderer    = nullptr;
 
     SDL_DestroySurface(window_target);
     SDL_DestroySurface(obs_target);
+    window_target = nullptr;
+    obs_target    = nullptr;
+
+    SDL_Quit();
+
+    c.full_reset();
+
+    sprite_render.reset();
+    tilemap.reset();
+    goal.reset();
+    agent.reset();
+
+    // ---- CEnv interface: free allocated buffers ----
+    for (int i = 0; i < make_data.observation_spaces_size; i++)
+        free(make_data.observation_spaces[i].value_buffer.f);
+    free(make_data.observation_spaces);
+
+    for (int i = 0; i < make_data.action_spaces_size; i++)
+        free(make_data.action_spaces[i].value_buffer.i);
+    free(make_data.action_spaces);
+
+    free(observation.value_buffer.b);
+    observation.value_buffer.b = nullptr;
+
+    free(render_data.value_buffer.b);
+    render_data.value_buffer.b = nullptr;
+
+    g_initialized = false;
 }
 
 // Rendering
@@ -411,6 +457,8 @@ void render_game(bool is_obs) {
     tilemap->render();
     sprite_render->render(positive_z);
     agent->render();
+
+    SDL_RenderPresent(gr.get_renderer());
 }
 
 void reset() {

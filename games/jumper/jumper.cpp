@@ -1,4 +1,5 @@
 #include "../../cenv/cenv.h"
+#include "../../cenv/distribution_mode.h"
 
 #include <cmath>
 #include <iostream>
@@ -7,6 +8,7 @@
 #include "common_systems.h"
 
 const int version = 100;
+int distribution_mode = DIST_HARD;
 const bool show_log = false;
 
 // ---------------------- CEnv Interface ----------------------
@@ -16,6 +18,8 @@ cenv_make_data make_data;
 cenv_reset_data reset_data;
 cenv_step_data step_data;
 cenv_render_data render_data;
+
+static bool g_initialized = false;
 
 // Shared value between different datas (optional)
 cenv_key_value observation;
@@ -54,6 +58,24 @@ std::shared_ptr<System_Particles> particles;
 
 System_Tilemap::Config tilemap_config;
 int current_map_theme = 0;
+int episode_timeout = 1000;
+int curr_step = 0;
+
+static void apply_distribution_mode() {
+    if (distribution_mode == DIST_MEMORY) {
+        tilemap_config.mode = memory_mode;
+        episode_timeout = 2000;
+        game_zoom = 0.3f;
+    } else if (distribution_mode == DIST_EASY) {
+        tilemap_config.mode = easy_mode;
+        episode_timeout = 1000;
+        game_zoom = 0.3f * 16.0f / 12.0f;
+    } else {
+        tilemap_config.mode = hard_mode;
+        episode_timeout = 1000;
+        game_zoom = 0.3f;
+    }
+}
 
 // Big list of different background images
 std::vector<std::string> background_names {
@@ -127,6 +149,10 @@ int32_t cenv_get_env_version() {
 }
 
 int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options_size) {
+    if (g_initialized)
+        cenv_close();
+    g_initialized = true;
+
     // ---------------------- CEnv Interface ----------------------
 
     unsigned int seed = time(nullptr);
@@ -149,6 +175,10 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
             assert(options[i].value_type == CENV_VALUE_TYPE_INT);
 
             window_height = options[i].value.i;
+        }
+        else if (name == "distribution_mode") {
+            assert(options[i].value_type == CENV_VALUE_TYPE_INT);
+            distribution_mode = options[i].value.i;
         }
     }
     
@@ -218,14 +248,16 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     amask = 0xff000000;
 #endif
 
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+    SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+
+    std::string render_mode_str(render_mode != nullptr ? render_mode : "");
+    if (render_mode_str != "human")
+        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen");
 
     SDL_Init(SDL_INIT_VIDEO);
 
-    IMG_Init(IMG_INIT_PNG);
-
-    window_target = SDL_CreateSurface(window_width, window_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
-    obs_target = SDL_CreateSurface(obs_width, obs_height, SDL_GetPixelFormatEnumForMasks(32, rmask, gmask, bmask, amask));
+    window_target = SDL_CreateSurface(window_width, window_height, SDL_GetPixelFormatForMasks(32, rmask, gmask, bmask, amask));
+    obs_target = SDL_CreateSurface(obs_width, obs_height, SDL_GetPixelFormatForMasks(32, rmask, gmask, bmask, amask));
 
     window_renderer = SDL_CreateSoftwareRenderer(window_target);
     obs_renderer = SDL_CreateSoftwareRenderer(obs_target);
@@ -298,7 +330,10 @@ int32_t cenv_make(const char* render_mode, cenv_option* options, int32_t options
     compass_needle.load("assets/custom/jumper_compass_needle.png");
     compass_bar.load("assets/custom/jumper_compass_bar.png");
 
+    apply_distribution_mode();
+
     // Reset spawns entities while generating map
+    apply_distribution_mode();
     reset();
 
     return 0; // No error
@@ -314,8 +349,13 @@ int32_t cenv_reset(cenv_option* options, int32_t options_size) {
 
             rng.seed(options[i].value.i);
         }
+        else if (name == "distribution_mode") {
+            if (options[i].value_type == CENV_VALUE_TYPE_INT)
+                distribution_mode = options[i].value.i;
+        }
     }
 
+    apply_distribution_mode();
     reset();
 
     render_game(true);
@@ -368,6 +408,10 @@ int32_t cenv_step(cenv_key_value* actions, int32_t actions_size) {
             break;
     }
 
+    if (++curr_step >= episode_timeout) {
+        step_data.truncated = true;
+    }
+
     // Render and grab pixels
     render_game(true);
 
@@ -409,36 +453,65 @@ int32_t cenv_render() {
 }
 
 void cenv_close() {
-    // ---------------------- CEnv Interface ----------------------
-    
-    // Dealloc make data
-    for (int i = 0; i < make_data.observation_spaces_size; i++)
-        free(make_data.observation_spaces[i].value_buffer.f);
+    if (!g_initialized)
+        return;
 
-    free(make_data.observation_spaces);
+    // ---- Game: ordered teardown ----
+    c.clear_entities();
 
-    for (int i = 0; i < make_data.action_spaces_size; i++)
-        free(make_data.action_spaces[i].value_buffer.i);
+    // Destroy all textures BEFORE renderers.
+    // The compass textures live outside the asset manager, so destroy explicitly.
+    auto destroy_asset_texture = [](Asset_Texture &t) {
+        if (t.window_texture) { SDL_DestroyTexture(t.window_texture); t.window_texture = nullptr; }
+        if (t.obs_texture)    { SDL_DestroyTexture(t.obs_texture);    t.obs_texture    = nullptr; }
+        t.width = t.height = 0;
+    };
+    destroy_asset_texture(compass_circle);
+    destroy_asset_texture(compass_needle);
+    destroy_asset_texture(compass_bar);
 
-    free(make_data.action_spaces);
-
-    // Observations
-    free(observation.value_buffer.b);
-
-    // Frame
-    free(render_data.value_buffer.b);
-    
-    // ---------------------- Game ----------------------
-
-    // Explcit destruct before renderer
     background_textures.clear();
     manager_texture.clear();
 
     SDL_DestroyRenderer(window_renderer);
     SDL_DestroyRenderer(obs_renderer);
+    window_renderer = nullptr;
+    obs_renderer    = nullptr;
+    gr.window_renderer = nullptr;
+    gr.obs_renderer    = nullptr;
 
     SDL_DestroySurface(window_target);
     SDL_DestroySurface(obs_target);
+    window_target = nullptr;
+    obs_target    = nullptr;
+
+    SDL_Quit();
+
+    c.full_reset();
+
+    sprite_render.reset();
+    tilemap.reset();
+    hazard.reset();
+    goal.reset();
+    agent.reset();
+    particles.reset();
+
+    // ---- CEnv interface: free allocated buffers ----
+    for (int i = 0; i < make_data.observation_spaces_size; i++)
+        free(make_data.observation_spaces[i].value_buffer.f);
+    free(make_data.observation_spaces);
+
+    for (int i = 0; i < make_data.action_spaces_size; i++)
+        free(make_data.action_spaces[i].value_buffer.i);
+    free(make_data.action_spaces);
+
+    free(observation.value_buffer.b);
+    observation.value_buffer.b = nullptr;
+
+    free(render_data.value_buffer.b);
+    render_data.value_buffer.b = nullptr;
+
+    g_initialized = false;
 }
 
 // Rendering
@@ -470,7 +543,8 @@ void render_game(bool is_obs) {
     sprite_render->render(positive_z);
     agent->render();
 
-    // Draw compass
+    // Draw compass (hidden in memory mode, matching original)
+    if (tilemap_config.mode != memory_mode) {
     const float compass_size = 200.0f;
     const Vector2 compass_offset{ -32.0f, 32.0f };
 
@@ -507,10 +581,14 @@ void render_game(bool is_obs) {
 
         SDL_RenderTextureRotated(gr.get_renderer(), is_obs ? compass_bar.obs_texture : compass_bar.window_texture, NULL, &dst_rect, 0.0f, NULL, SDL_FLIP_NONE);
     }
+    }
+
+    SDL_RenderPresent(gr.get_renderer());
 }
 
 void reset() {
     c.clear_entities();
+    curr_step = 0;
 
     tilemap->regenerate(rng, tilemap_config);
 

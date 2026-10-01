@@ -31,6 +31,7 @@ public:
 
     struct Config {
         bool easy_mode = false;
+        int main_width = 20;
     };
 
 private:
