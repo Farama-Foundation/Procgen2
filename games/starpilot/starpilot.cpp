@@ -758,12 +758,13 @@ void render_game(bool is_obs) {
     SDL_SetRenderDrawColor(gr.get_renderer(), 0, 0, 0, 255);
     SDL_RenderClear(gr.get_renderer());
 
-    // Scale: world units → pixels
+    // World units → pixels. Renderer::render_texture also applies camera_scale and
+    // recenters on camera_position, so pass pixel coords with identity camera.
     float scale = (float)height / WORLD_H;
 
-    gr.camera_scale = scale;
+    gr.camera_scale = 1.f;
     gr.camera_size  = { (float)width, (float)height };
-    gr.camera_position = { 0.f, 0.f };
+    gr.camera_position = { 0.5f * (float)width, 0.5f * (float)height };
 
     // ---- Scrolling background ----
     if (!bg_textures.empty()) {
