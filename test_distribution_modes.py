@@ -83,3 +83,19 @@ def test_exploration_mode(env_id):
 def test_invalid_distribution_mode_is_rejected(env_id):
     with pytest.raises(ValueError, match="not a valid distribution mode"):
         gym.make(env_id, distribution_mode="impossible", disable_env_checker=True)
+
+
+def test_gym_make_works_from_a_different_cwd(tmp_path):
+    """Textures are `assets/...` paths; they must resolve from the package, not cwd."""
+    prev = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        env = _make("procgen2/CoinRun-v0")
+        try:
+            obs, _ = env.reset(seed=0)
+            assert obs["screen"].shape == (12288,)
+            env.step(env.action_space.sample())
+        finally:
+            env.close()
+    finally:
+        os.chdir(prev)

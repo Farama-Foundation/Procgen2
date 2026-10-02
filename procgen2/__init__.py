@@ -20,6 +20,19 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
 
 
+def _asset_root() -> str:
+    """Directory that contains the top-level `assets/` folder.
+
+    Texture paths in C++ are `assets/...` relative to this root, not cwd.
+    """
+    marker = os.path.join("assets", "kenney", "Ground", "Dirt", "dirtMid.png")
+    for root in (_ROOT, _HERE, os.path.join(_HERE, os.pardir)):
+        root = os.path.abspath(root)
+        if os.path.isfile(os.path.join(root, marker)):
+            return root
+    return os.path.abspath(_ROOT)
+
+
 def _lib_path(game_dir: str, lib_name: str) -> str:
     """Return the platform-appropriate shared library path."""
     import sys
@@ -104,6 +117,8 @@ def _make_env(game_dir, lib_name, render_mode, seed, options):
             f"  cmake -S games/{game_dir} -B games/{game_dir}/build -DCMAKE_BUILD_TYPE=Release\n"
             f"  cmake --build games/{game_dir}/build --parallel"
         )
+
+    os.environ["PROCGEN2_ASSET_ROOT"] = _asset_root()
 
     init_options = dict(options)
     if seed is not None:

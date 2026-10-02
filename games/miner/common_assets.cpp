@@ -1,10 +1,12 @@
 #include "common_assets.h"
+#include "../../cenv/asset_path.h"
 
 void Asset_Texture::load(const std::string &name) {
-    SDL_Surface* surface = IMG_Load(name.c_str());
+    const std::string path = procgen2_resolve_asset(name);
+    SDL_Surface* surface = IMG_Load(path.c_str());
 
     if (surface == nullptr)
-        throw std::runtime_error("Could not load surface \"" + name + "\"!");
+        throw std::runtime_error("Could not load surface \"" + path + "\"!");
 
     width = surface->w;
     height = surface->h;
