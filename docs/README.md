@@ -7,14 +7,23 @@ For more information about how to contribute to the documentation go to our [CON
 
 ## Building the docs locally
 
-From the repository root:
+From the repository root, with [mise](https://mise.jdx.dev) installed:
+
+```bash
+mise trust && mise install  # once, to get `just`
+just docs-serve
+```
+
+This creates a `.venv`, installs the docs dependencies, and opens the site in your browser. The site rebuilds automatically when you save a file. Run `just` to list the other recipes (`docs-build`, `docs-clean`).
+
+Without mise or just:
 
 ```bash
 pip install -r docs/requirements.txt
-sphinx-autobuild -b dirhtml docs _build
+sphinx-autobuild -b dirhtml docs docs/_build/html
 ```
 
-Then open <http://127.0.0.1:8000>. The site rebuilds automatically when you save a file.
+Then open <http://127.0.0.1:8000>.
 
 ## Layout
 
