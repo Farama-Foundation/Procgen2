@@ -1,0 +1,4 @@
+sphinx
+sphinx-autobuild
+myst-parser
+celshast
