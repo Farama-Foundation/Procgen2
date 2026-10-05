@@ -32,8 +32,8 @@ html_title = "Procgen2 Documentation"
 html_baseurl = "https://procgen2.farama.org"
 html_copy_source = False
 html_theme_options = {
-    "light_logo": "img/procgen2-black.png",
-    "dark_logo": "img/procgen2-white.png",
+    "light_logo": "img/procgen2-black.svg",
+    "dark_logo": "img/procgen2-white.svg",
     "gtag": "G-6H9C8TWXZ8",
     "description": "Procgen2 is a community rewrite of OpenAI's Procgen benchmark: procedurally generated game environments for reinforcement learning.",
     "image": "img/procgen2-text.png",
