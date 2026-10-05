@@ -21,18 +21,6 @@ Each game is written in C++ and compiled to a shared library, which Python loads
 Procgen2 is under active development and is not yet published on PyPI. To try the games, build them from source by following the [development guide](development.md).
 ```
 
-## Games
-
-Procgen2 currently includes the following games:
-
-- [Bossfight](environments/bossfight.md)
-- [Caveflyer](environments/caveflyer.md)
-- [Chaser](environments/chaser.md)
-- [Climber](environments/climber.md)
-- [Coinrun](environments/coinrun.md)
-- [Jumper](environments/jumper.md)
-- [Maze](environments/maze.md)
-
 ## Citation
 
 Procgen was originally introduced in the following work:
@@ -51,19 +39,6 @@ Procgen was originally introduced in the following work:
 :caption: Introduction
 
 development
-```
-
-```{toctree}
-:hidden:
-:caption: Environments
-
-environments/bossfight
-environments/caveflyer
-environments/chaser
-environments/climber
-environments/coinrun
-environments/jumper
-environments/maze
 ```
 
 ```{toctree}

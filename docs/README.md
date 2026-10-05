@@ -29,13 +29,12 @@ Then open <http://127.0.0.1:8000>.
 
 - `index.md`: landing page, and the table of contents (`toctree` blocks) for the sidebar
 - `development.md`: building the games and implementing new ones
-- `environments/<game>.md`: one page per game
 - `_static/img/`: images; logos live here
 - `conf.py`: Sphinx and theme configuration
 
 ## Adding a page
 
-1. Create a Markdown file, e.g. `docs/environments/starpilot.md`, starting with a `# Title` heading.
+1. Create a Markdown file, e.g. `docs/environments/coinrun.md`, starting with a `# Title` heading.
 2. Add its path (without `.md`) to the matching `toctree` block in `index.md`, so it appears in the sidebar.
 
 To add a new sidebar section, add another `toctree` block with its own `:caption:`.
