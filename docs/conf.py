@@ -44,4 +44,5 @@ html_theme_options = {
 }
 
 html_static_path = ["_static"]
+html_favicon = "_static/img/favicon.svg"
 html_css_files = []
